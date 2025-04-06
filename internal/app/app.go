@@ -14,7 +14,7 @@ import (
 )
 
 func NewApp() *fx.App {
-	envFilePath := ".env.example"
+	envFilePath := ".env"
 	if env := os.Getenv("APP_ENV"); env != "" && env != "local" {
 		envFilePath = ""
 	}

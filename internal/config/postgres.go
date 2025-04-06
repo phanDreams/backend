@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	dsnEnvName = "POSTGRES_DSN"
+	dsnEnvName = "PG_DSN"
 )
 
 var _ PostgresConfig = (*postgresConfig)(nil)
