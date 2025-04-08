@@ -29,10 +29,10 @@ lint:
 	$(LOCAL_BIN)/golangci-lint run ./... --config .golangci.pipeline.yaml
 
 local-migration-status:
-	${LOCAL_BIN}/goose -v postgres status -dir ${MIGRATION_DIR}
+	${LOCAL_BIN}/goose -dir ${MIGRATION_DIR} postgres "$(PG_DSN)" status
 
 local-migration-up:
-	${LOCAL_BIN}/goose -v postgres up -dir ${MIGRATION_DIR}
+	${LOCAL_BIN}/goose -dir ${MIGRATION_DIR} postgres "$(PG_DSN)" up
 
 local-migration-down:
-	${LOCAL_BIN}/goose -v postgres down -dir ${MIGRATION_DIR}
+	${LOCAL_BIN}/goose -dir ${MIGRATION_DIR} postgres "$(PG_DSN)" down
