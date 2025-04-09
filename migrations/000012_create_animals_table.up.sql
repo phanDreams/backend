@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS animals (
+    id SERIAL PRIMARY KEY,
+    animal_category_id INTEGER REFERENCES animal_categories(id),
+    size VARCHAR,
+    breed VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+); 

@@ -9,7 +9,7 @@ services:
       DATADIR: /var/lib/postgresql/data/pgdata
       TZ: UTC
     ports:
-      - 5432:5432
+      - 5433:5432
     healthcheck:
       test: ['CMD', 'pg_isready', '-d', 'pethelp']
       interval: 5s

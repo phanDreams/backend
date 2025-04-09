@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS branches (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    address_id INTEGER REFERENCES addresses(id),
+    phone VARCHAR(20),
+    email VARCHAR(255),
+    working_hours JSONB,
+    is_hg BOOLEAN,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+); 

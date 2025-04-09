@@ -1,0 +1,1 @@
+DELETE FROM animal_sizes; 
