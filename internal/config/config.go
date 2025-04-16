@@ -34,12 +34,6 @@ type Config struct {
 
 // LoadEnv loads the .env file if the path is provided.
 func LoadEnv(path string, logger *zap.Logger) error {
-	if logger == nil {
-		// Create a default logger if none is provided
-		defaultLogger, _ := zap.NewDevelopment()
-		logger = defaultLogger
-	}
-
 	if path == "" {
 		logger.Info("No .env file path provided, using system environment variables")
 		return nil

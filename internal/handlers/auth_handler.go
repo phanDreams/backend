@@ -8,8 +8,8 @@ import (
 	"github.com/go-playground/validator"
 	"go.uber.org/zap"
 
-	"pethelp-backend/internal/models"
-	"pethelp-backend/internal/service"
+	"pethelp-backend/internal/domain/models"
+	"pethelp-backend/internal/domain/service"
 )
 
 type RegistrationRequest struct {
@@ -132,13 +132,21 @@ func RegisterSpecialistHandler(authService *service.AuthService, logger *zap.Log
 		err = authService.RegisterSpecialist(newSpecialist)
 		if err != nil {
 			logger.Error("Failed to register specialist", zap.Error(err))
-			c.JSON(500, gin.H{"error": "Failed to register specialist"})
+			c.JSON(500, gin.H{"error": "Internal server error"})
+			return
+		}
+
+		token, err := authService.GenerateToken(newSpecialist)
+		if err != nil {
+			logger.Error("Failed to generate token", zap.Error(err))
+			c.JSON(500, gin.H{"error": "Internal server error"})
 			return
 		}
 
 		c.JSON(201, gin.H{
 			"message": "Specialist registered successfully",
 			"id": newSpecialist.ID,
+			"token":   token,
 		})
 	}
 }

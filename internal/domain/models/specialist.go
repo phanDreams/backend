@@ -11,4 +11,5 @@ type Specialist struct {
 	Is_deleted bool   `json:"is_deleted"`
 	Is_active bool    `json:"is_active"`
 	Is_verified bool  `json:"is_verified"`
+	CreatedAt string  `json:"created_at"`
 }
