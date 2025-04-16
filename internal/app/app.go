@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"pethelp-backend/internal/api/health"
+	"pethelp-backend/internal/api/specialist"
 	"pethelp-backend/internal/config"
 	"pethelp-backend/internal/database/postgres"
 	"pethelp-backend/internal/database/redis"
@@ -19,10 +20,17 @@ func NewApp() *fx.App {
 		envFilePath = ""
 	}
 
+	// Load environment variables before creating the FX app
+	logger, err := logger.New()
+	if err = config.LoadEnv(envFilePath, logger); err != nil {
+		logger.Fatal("Failed to load environment variables", zap.Error(err))
+	}
+
 	return fx.New(
+		fx.Supply(logger), // Supply the already created logger
 		health.Module,
+		specialist.Module,
 		fx.Provide(
-			logger.New,
 			config.NewPostgresConfig,
 			config.NewRedisConfig,
 			config.LoadHTTPServerConfig,
@@ -32,9 +40,6 @@ func NewApp() *fx.App {
 			server.NewGinServer,
 		),
 		fx.Invoke(
-			func(logger *zap.Logger) error {
-				return config.LoadEnv(envFilePath, logger)
-			},
 			func(s *postgres.Storage, lc fx.Lifecycle) {
 				postgres.ManageLifecycle(s, lc)
 			},
