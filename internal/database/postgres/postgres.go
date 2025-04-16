@@ -3,7 +3,9 @@ package postgres
 import (
 	"context"
 	"pethelp-backend/internal/config"
+	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -25,7 +27,22 @@ func New(pgc config.PostgresConfig, logger *zap.Logger) *Storage {
 
 // Open establishes a connection to the PostgreSQL database.
 func (s *Storage) Open(ctx context.Context) error {
-	pool, err := pgxpool.New(ctx, s.cfg.DSN())
+	config, err := pgxpool.ParseConfig(s.cfg.DSN())
+	if err != nil {
+		s.logger.Error("failed to parse database config", zap.Error(err))
+		return err
+	}
+
+	// Add connection pool settings
+	config.MaxConns = 25
+	config.MinConns = 5
+	config.MaxConnLifetime = time.Hour
+	config.MaxConnIdleTime = 30 * time.Minute
+	
+	// Disable statement cache to prevent conflicts
+	config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		s.logger.Error("Failed to open pool connections", zap.Error(err))
 		return err

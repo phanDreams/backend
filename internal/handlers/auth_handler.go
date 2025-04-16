@@ -2,6 +2,9 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
+	"io"
+	"strings"
 	"unicode"
 
 	"github.com/gin-gonic/gin"
@@ -13,12 +16,12 @@ import (
 )
 
 type RegistrationRequest struct {
-	Name                 string `json:"name" binding:"required"`
-	FamilyName          string `json:"family_name" binding:"required"`
-	Phone               string `json:"phone" binding:"required" example:"+38 (XXX) XXX-XX-XX"`
-	Email               string `json:"email" binding:"required,email" example:"user@example.com"`
+	Name                 string `json:"name" binding:"required,min=2"`
+	FamilyName          string `json:"family_name" binding:"required,min=2"`
+	Phone               string `json:"phone" binding:"required,e164"`
+	Email               string `json:"email" binding:"required,email"`
 	Password            string `json:"password" binding:"required,min=12"`
-	PasswordConfirmation string `json:"password_confirmation" validate:"required,eqfield=Password"`
+	PasswordConfirmation string `json:"password_confirmation" binding:"required,eqfield=Password"`
 }
 
 func isValidPassword(password string) error {
@@ -62,44 +65,61 @@ func isValidPassword(password string) error {
 	return nil
 }
 
-func (r *RegistrationRequest) ValidatePassword() error {
+func (r *RegistrationRequest) Validate() error {
 	validate := validator.New()
-
-	// Validate basic struct tags (e.g. required, email, eqfield)
 	if err := validate.Struct(r); err != nil {
-		return err
+		if _, ok := err.(*validator.InvalidValidationError); ok {
+			return err
+		}
+		var errorMessages []string
+		for _, err := range err.(validator.ValidationErrors) {
+			switch err.Field() {
+			case "Name", "FamilyName":
+				errorMessages = append(errorMessages, fmt.Sprintf("%s must be at least 2 characters", err.Field()))
+			case "Phone":
+				errorMessages = append(errorMessages, "Phone must be in E.164 format (e.g., +380501234567)")
+			case "Email":
+				errorMessages = append(errorMessages, "Invalid email format")
+			case "Password":
+				errorMessages = append(errorMessages, "Password must be at least 12 characters")
+			case "PasswordConfirmation":
+				errorMessages = append(errorMessages, "Passwords do not match")
+			}
+		}
+		return errors.New(strings.Join(errorMessages, "; "))
 	}
-
-	// Check password complexity
-	if err := isValidPassword(r.Password); err != nil {
-		return err
-	}
-
-	// Ensure the password is not the same as the email
-	if r.Password == r.Email {
-		return errors.New("password cannot be the same as email")
-	}
-
 	return nil
 }
 
-//handle register specialist endpoint
+// RegisterSpecialistHandler handles register specialist endpoint
 func RegisterSpecialistHandler(authService *service.AuthService, logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var request RegistrationRequest
-		if err := c.ShouldBindJSON(&request); err != nil {
-			logger.Error("Failed to bind JSON", zap.Error(err))
-			c.JSON(400, gin.H{"error": "Invalid request body"})
+		// Read the raw body first
+		bodyBytes, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			logger.Error("Failed to read request body", zap.Error(err))
+			c.JSON(400, gin.H{"error": "Failed to read request"})
 			return
 		}
+		// Restore the body for subsequent reading
+		c.Request.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
 
-		if err := request.ValidatePassword(); err != nil {
-			logger.Error("Password validation failed", zap.Error(err))
+		var request RegistrationRequest
+		if err := c.ShouldBindJSON(&request); err != nil {
+			logger.Error("Failed to bind JSON", 
+				zap.Error(err),
+				zap.String("raw_body", string(bodyBytes)))
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
 
-		exists, err := service.CheckEmailExists(authService.DB, request.Email)
+		if err := request.Validate(); err != nil {
+			logger.Error("Validation failed", zap.Error(err))
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+
+		exists, err := authService.CheckEmailExists(request.Email)
 		if err != nil {
 			logger.Error("Failed to check email existence", zap.Error(err))
 			c.JSON(500, gin.H{"error": "Internal server error"})
@@ -110,7 +130,7 @@ func RegisterSpecialistHandler(authService *service.AuthService, logger *zap.Log
 			return
 		}
 
-		exists, err = service.CheckPhoneExists(authService.DB, request.Phone)
+		exists, err = authService.CheckPhoneExists(request.Phone)
 		if err != nil {
 			logger.Error("Failed to check phone existence", zap.Error(err))
 			c.JSON(500, gin.H{"error": "Internal server error"})
@@ -131,8 +151,10 @@ func RegisterSpecialistHandler(authService *service.AuthService, logger *zap.Log
 
 		err = authService.RegisterSpecialist(newSpecialist)
 		if err != nil {
-			logger.Error("Failed to register specialist", zap.Error(err))
-			c.JSON(500, gin.H{"error": "Internal server error"})
+			logger.Error("Failed to register specialist", 
+				zap.Error(err),
+				zap.Any("specialist", newSpecialist)) // Add specialist data logging
+			c.JSON(500, gin.H{"error": err.Error()}) // Return actual error
 			return
 		}
 
@@ -145,8 +167,8 @@ func RegisterSpecialistHandler(authService *service.AuthService, logger *zap.Log
 
 		c.JSON(201, gin.H{
 			"message": "Specialist registered successfully",
-			"id": newSpecialist.ID,
-			"token":   token,
+			"id":     newSpecialist.ID,
+			"token":  token,
 		})
 	}
 }

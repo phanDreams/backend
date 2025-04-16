@@ -1,5 +1,7 @@
-# Test invalid email format
-curl -X POST http://localhost:3000/api/v1/specialists/register \
+#!/bin/bash
+
+echo "Testing invalid email format..."
+response=$(curl -s -w "\n%{http_code}" -X POST http://localhost:3000/api/v1/specialists/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test",
@@ -8,15 +10,23 @@ curl -X POST http://localhost:3000/api/v1/specialists/register \
     "email": "not-an-email",
     "password": "SecurePass123!",
     "password_confirmation": "SecurePass123!"
-  }'
+  }')
 
-# Expected: HTTP 400
-# {
-#   "error": "Invalid request body"
-# }
+http_code=$(echo "$response" | tail -n1)
+body=$(echo "$response" | sed '$d')
 
-# Test missing required field
-curl -X POST http://localhost:3000/api/v1/specialists/register \
+
+if [ "$http_code" -eq 400 ]; then
+    echo "✅ Test passed"
+else
+    echo "❌ Test failed"
+fi
+
+echo "Status Code: $http_code"
+echo "Response: $body"
+
+echo "\nTesting missing required field..."
+response=$(curl -s -w "\n%{http_code}" -X POST http://localhost:3000/api/v1/specialists/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test",
@@ -24,9 +34,10 @@ curl -X POST http://localhost:3000/api/v1/specialists/register \
     "phone": "+38 (050) 111-11-11",
     "password": "SecurePass123!",
     "password_confirmation": "SecurePass123!"
-  }'
+  }')
 
-# Expected: HTTP 400
-# {
-#   "error": "Invalid request body"
-# }
+http_code=$(echo "$response" | tail -n1)
+body=$(echo "$response" | sed '$d')
+
+echo "Status Code: $http_code"
+echo "Response: $body"

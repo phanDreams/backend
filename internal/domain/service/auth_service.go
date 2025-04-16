@@ -21,6 +21,9 @@ type AuthService struct {
 
 //create a new instance os AuthService
 func NewAuthService(db *pgxpool.Pool, logger *zap.Logger, jwtSecret string) *AuthService {
+	if db == nil {
+		logger.Fatal("Database connection is nil")
+	}
 	return &AuthService{
 		DB:        db,
 		Logger:    logger,
@@ -30,11 +33,10 @@ func NewAuthService(db *pgxpool.Pool, logger *zap.Logger, jwtSecret string) *Aut
 
 //register a new specialist
 func (s *AuthService) RegisterSpecialist(specialist *models.Specialist) error {
-   hashedPassword, err := bcrypt.GenerateFromPassword([]byte(specialist.Password), bcrypt.DefaultCost)
-
-   if err != nil {
-	s.Logger.Error("Failed to hash password", zap.Error(err))
-	return err
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(specialist.Password), bcrypt.DefaultCost)
+	if err != nil {
+		s.Logger.Error("Failed to hash password", zap.Error(err))
+		return err
 	}
 
 	// store the hashed password in the database
@@ -43,12 +45,17 @@ func (s *AuthService) RegisterSpecialist(specialist *models.Specialist) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	sqlStmt := `INSERT INTO specialists (name, family_name, phone, email, password_hash, is_banned, is_deleted, is_active, is_verified, created_at) 
-	VALUES ($1, $2, $3, $4, $5, false, false, true, false, NOW())
-	RETURNING id`
+	sqlStmt := `
+		INSERT INTO specialists (name, family_name, phone, email, password_hash) 
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id`
 
-	err = s.DB.QueryRow(ctx, sqlStmt,specialist.Name, specialist.FamilyName, specialist.Phone, specialist.Email, specialist.Password,
-		specialist.Is_banned, specialist.Is_deleted, specialist.Is_active, specialist.Is_verified).Scan(&specialist.ID)
+	err = s.DB.QueryRow(ctx, sqlStmt,
+		specialist.Name,
+		specialist.FamilyName,
+		specialist.Phone,
+		specialist.Email,
+		specialist.Password).Scan(&specialist.ID)
 
 	if err != nil {
 		s.Logger.Error("Failed to insert specialist", zap.Error(err))
@@ -57,20 +64,36 @@ func (s *AuthService) RegisterSpecialist(specialist *models.Specialist) error {
 	return nil
 }
 
-func CheckEmailExists(db *pgxpool.Pool, email string) (bool, error) {
+func (s *AuthService) CheckEmailExists(email string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
 	var exists bool
-	err := db.QueryRow(context.Background(), 
-		"SELECT EXISTS(SELECT 1 FROM specialists WHERE email = $1)", 
+	// Use simple query instead of prepared statement
+	err := s.DB.QueryRow(ctx, 
+		"SELECT EXISTS(SELECT 1 FROM specialists WHERE email = $1 AND is_deleted = false)", 
 		email).Scan(&exists)
-	return exists, err
+	if err != nil {
+		s.Logger.Error("Failed to check email existence", zap.Error(err))
+		return false, err
+	}
+	return exists, nil
 }
 
-func CheckPhoneExists(db *pgxpool.Pool, phone string) (bool, error) {
+func (s *AuthService) CheckPhoneExists(phone string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
 	var exists bool
-	err := db.QueryRow(context.Background(), 
-		"SELECT EXISTS(SELECT 1 FROM specialists WHERE phone = $1)", 
+	// Use simple query instead of prepared statement
+	err := s.DB.QueryRow(ctx, 
+		"SELECT EXISTS(SELECT 1 FROM specialists WHERE phone = $1 AND is_deleted = false)", 
 		phone).Scan(&exists)
-	return exists, err
+	if err != nil {
+		s.Logger.Error("Failed to check phone existence", zap.Error(err))
+		return false, err
+	}
+	return exists, nil
 }
 
 

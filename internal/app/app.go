@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"os"
 	"pethelp-backend/internal/api/health"
 	"pethelp-backend/internal/api/specialist"
@@ -15,21 +16,22 @@ import (
 )
 
 func NewApp() *fx.App {
+	logger, err := logger.New()
+	if err != nil {
+		panic(err)
+	}
+
 	envFilePath := ".env"
 	if env := os.Getenv("APP_ENV"); env != "" && env != "local" {
 		envFilePath = ""
 	}
 
-	// Load environment variables before creating the FX app
-	logger, err := logger.New()
 	if err = config.LoadEnv(envFilePath, logger); err != nil {
 		logger.Fatal("Failed to load environment variables", zap.Error(err))
 	}
 
 	return fx.New(
-		fx.Supply(logger), // Supply the already created logger
-		health.Module,
-		specialist.Module,
+		fx.Supply(logger),
 		fx.Provide(
 			config.NewPostgresConfig,
 			config.NewRedisConfig,
@@ -39,13 +41,22 @@ func NewApp() *fx.App {
 			server.NewHTTPServer,
 			server.NewGinServer,
 		),
+		// Ensure database is initialized before other components
 		fx.Invoke(
-			func(s *postgres.Storage, lc fx.Lifecycle) {
+			func(s *postgres.Storage, lc fx.Lifecycle) error {
 				postgres.ManageLifecycle(s, lc)
+				if err := s.Open(context.Background()); err != nil {
+					return err
+				}
+				return nil
 			},
-			func(r *redis.Storage, lc fx.Lifecycle) {
+			func(r *redis.Storage, lc fx.Lifecycle) error {
 				redis.ManageLifecycle(r, lc)
+				return nil
 			},
 		),
+		// Add modules after database initialization
+		health.Module,
+		specialist.Module,
 	)
 }

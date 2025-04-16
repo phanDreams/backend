@@ -1,6 +1,7 @@
 package specialist
 
 import (
+	"context"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -18,8 +19,14 @@ const (
 
 var Module = fx.Module("specialist",
 	fx.Provide(
-		func(s *postgres.Storage, logger *zap.Logger) *service.AuthService {
-			return service.NewAuthService(s.DB(), logger, os.Getenv("JWT_SECRET"))
+		func(storage *postgres.Storage, lc fx.Lifecycle, logger *zap.Logger) (*service.AuthService, error) {
+			// Ensure database is initialized before creating AuthService
+			if err := storage.Open(context.Background()); err != nil {
+				logger.Fatal("Failed to initialize database connection", zap.Error(err))
+				return nil, err
+			}
+			
+			return service.NewAuthService(storage.DB(), logger, os.Getenv("JWT_SECRET")), nil
 		},
 	),
 	fx.Invoke(registerRoutes),
