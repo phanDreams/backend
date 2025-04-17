@@ -18,7 +18,7 @@ import (
 type RegistrationRequest struct {
 	Name                 string `json:"name" binding:"required,min=2"`
 	FamilyName          string `json:"family_name" binding:"required,min=2"`
-	Phone               string `json:"phone" binding:"required,e164"`
+	Phone               string `json:"phone" binding:"required" example:"+38 (012) 345-67-89"`
 	Email               string `json:"email" binding:"required,email"`
 	Password            string `json:"password" binding:"required,min=12"`
 	PasswordConfirmation string `json:"password_confirmation" binding:"required,eqfield=Password"`
@@ -77,7 +77,7 @@ func (r *RegistrationRequest) Validate() error {
 			case "Name", "FamilyName":
 				errorMessages = append(errorMessages, fmt.Sprintf("%s must be at least 2 characters", err.Field()))
 			case "Phone":
-				errorMessages = append(errorMessages, "Phone must be in E.164 format (e.g., +380501234567)")
+				errorMessages = append(errorMessages, "Phone must be in E.123 format (e.g., +38 (XXX) XXX-XX-XX)")
 			case "Email":
 				errorMessages = append(errorMessages, "Invalid email format")
 			case "Password":
@@ -147,6 +147,10 @@ func RegisterSpecialistHandler(authService *service.AuthService, logger *zap.Log
 			Phone:      request.Phone,
 			Email:      request.Email,
 			Password:   request.Password,
+			Is_banned:  false,
+			Is_deleted: false,
+			Is_active:  true,
+			Is_verified: false,
 		}
 
 		err = authService.RegisterSpecialist(newSpecialist)

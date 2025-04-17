@@ -5,8 +5,8 @@ response=$(curl -s -w "\n%{http_code}" -X POST http://localhost:3000/api/v1/spec
   -d '{
     "name": "Олена",
     "family_name": "Коваленко",
-    "phone": "+380679876543",
-    "email": "olena.k@example.com",
+    "phone": "+380679876547",
+    "email": "olena@example.com",
     "password": "StrongPass2024!",
     "password_confirmation": "StrongPass2024!"
   }')
