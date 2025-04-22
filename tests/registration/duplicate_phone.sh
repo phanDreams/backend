@@ -12,7 +12,7 @@ curl -s -X POST http://localhost:3000/api/v1/specialists/register \
     "password_confirmation": "SecurePass123!"
   }'
 
-echo "\nTesting duplicate phone..."
+echo -e "\nTesting duplicate phone..."
 response=$(curl -s -w "\n%{http_code}" -X POST http://localhost:3000/api/v1/specialists/register \
   -H "Content-Type: application/json" \
   -d '{

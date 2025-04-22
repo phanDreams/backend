@@ -2,50 +2,66 @@ package specialist
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"pethelp-backend/internal/database/postgres"
+	"pethelp-backend/internal/domain/service"
+	"pethelp-backend/internal/handlers"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
-
-	"pethelp-backend/internal/database/postgres"
-	"pethelp-backend/internal/domain/service"
-	"pethelp-backend/internal/handlers"
 )
 
-const (
-	specialistRoutePath = "/api/v1/specialists"
-)
+const specialistRoutePath = "/api/v1/specialists"
+
+type ModuleParams struct {
+	fx.In
+
+	Router  *gin.Engine
+	Storage *postgres.Storage
+	Logger  *zap.Logger
+	Lc      fx.Lifecycle
+}
 
 var Module = fx.Module("specialist",
 	fx.Provide(
-		func(storage *postgres.Storage, lc fx.Lifecycle, logger *zap.Logger) (*service.AuthService, error) {
-			// Ensure database is initialized before creating AuthService
-			if err := storage.Open(context.Background()); err != nil {
-				logger.Fatal("Failed to initialize database connection", zap.Error(err))
-				return nil, err
-			}
-			
-			return service.NewAuthService(storage.DB(), logger, os.Getenv("JWT_SECRET")), nil
+		func(p ModuleParams) (*service.AuthService, error) {
+			var authService *service.AuthService
+			var err error
+
+			p.Lc.Append(fx.Hook{
+				OnStart: func(ctx context.Context) error {
+					secret := os.Getenv("JWT_SECRET")
+					if secret == "" {
+						return fmt.Errorf("JWT_SECRET environment variable not set")
+					}
+
+					db := p.Storage.DB()
+					if db == nil {
+						return fmt.Errorf("database connection not initialized")
+					}
+
+					authService = service.NewAuthService(db, p.Logger, secret)
+					return nil
+				},
+			})
+
+			return authService, err
 		},
 	),
-	fx.Invoke(registerRoutes),
+	fx.Invoke(
+		func(p ModuleParams, authService *service.AuthService) {
+			specialistGroup := p.Router.Group(specialistRoutePath)
+			{
+				handler := handlers.RegisterSpecialistHandler(authService, p.Logger)
+				specialistGroup.POST("/register", handler)
+
+				p.Logger.Info("Registered specialist routes",
+					zap.String("base_path", specialistRoutePath),
+					zap.String("register_endpoint", "/register"),
+					zap.String("method", "POST"))
+			}
+		},
+	),
 )
-
-func registerRoutes(
-	router *gin.Engine,
-	authService *service.AuthService,
-	logger *zap.Logger,
-) {
-
-	specialistGroup := router.Group(specialistRoutePath)
-	{
-		handler := handlers.RegisterSpecialistHandler(authService, logger)
-		specialistGroup.POST("/register", handler)
-
-		logger.Info("Registered specialist routes",
-			zap.String("base_path", specialistRoutePath),
-			zap.String("register_endpoint", "/register"),
-			zap.String("method", "POST"))
-	}
-}

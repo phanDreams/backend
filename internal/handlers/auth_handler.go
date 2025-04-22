@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"unicode"
 
@@ -15,10 +17,12 @@ import (
 	"pethelp-backend/internal/domain/service"
 )
 
+const maxBodySize = 1 << 20 // 1 MiB
+
 type RegistrationRequest struct {
 	Name                 string `json:"name" binding:"required,min=2"`
 	FamilyName          string `json:"family_name" binding:"required,min=2"`
-	Phone               string `json:"phone" binding:"required" example:"+38 (012) 345-67-89"`
+	Phone string `json:"phone" binding:"required,regexp=^\\+[0-9]{1,3}[0-9\\- ()]{7,}$"`
 	Email               string `json:"email" binding:"required,email"`
 	Password            string `json:"password" binding:"required,min=12"`
 	PasswordConfirmation string `json:"password_confirmation" binding:"required,eqfield=Password"`
@@ -88,38 +92,43 @@ func (r *RegistrationRequest) Validate() error {
 		}
 		return errors.New(strings.Join(errorMessages, "; "))
 	}
-	return nil
+	return isValidPassword(r.Password)
 }
 
 // RegisterSpecialistHandler handles register specialist endpoint
 func RegisterSpecialistHandler(authService *service.AuthService, logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Read the raw body first
-		bodyBytes, err := io.ReadAll(c.Request.Body)
+		// limit reading to maxBodySize
+        lr := &io.LimitedReader{R: c.Request.Body, N: maxBodySize}
+		bodyBytes, err := io.ReadAll(lr)
 		if err != nil {
 			logger.Error("Failed to read request body", zap.Error(err))
 			c.JSON(400, gin.H{"error": "Failed to read request"})
 			return
 		}
+		if lr.N <= 0 {
+            logger.Warn("Request body too large")
+            c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "Request body too large"})
+            return
+        }
 		// Restore the body for subsequent reading
-		c.Request.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
+		c.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 
-		var request RegistrationRequest
-		if err := c.ShouldBindJSON(&request); err != nil {
-			logger.Error("Failed to bind JSON", 
-				zap.Error(err),
-				zap.String("raw_body", string(bodyBytes)))
-			c.JSON(400, gin.H{"error": err.Error()})
-			return
-		}
+		var req RegistrationRequest
+        if err := c.ShouldBindJSON(&req); err != nil {
+            logger.Error("Failed to bind JSON", zap.Error(err))
+            c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+            return
+        }
+        if err := req.Validate(); err != nil {
+            logger.Error("Validation failed", zap.Error(err))
+            c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+            return
+        }
 
-		if err := request.Validate(); err != nil {
-			logger.Error("Validation failed", zap.Error(err))
-			c.JSON(400, gin.H{"error": err.Error()})
-			return
-		}
-
-		exists, err := authService.CheckEmailExists(request.Email)
+		 // Check uniqueness
+		exists, err := authService.CheckEmailExists(req.Email)
 		if err != nil {
 			logger.Error("Failed to check email existence", zap.Error(err))
 			c.JSON(500, gin.H{"error": "Internal server error"})
@@ -130,7 +139,7 @@ func RegisterSpecialistHandler(authService *service.AuthService, logger *zap.Log
 			return
 		}
 
-		exists, err = authService.CheckPhoneExists(request.Phone)
+		exists, err = authService.CheckPhoneExists(req.Phone)
 		if err != nil {
 			logger.Error("Failed to check phone existence", zap.Error(err))
 			c.JSON(500, gin.H{"error": "Internal server error"})
@@ -142,24 +151,22 @@ func RegisterSpecialistHandler(authService *service.AuthService, logger *zap.Log
 		}
 
 		newSpecialist := &models.Specialist{
-			Name:       request.Name,
-			FamilyName: request.FamilyName,
-			Phone:      request.Phone,
-			Email:      request.Email,
-			Password:   request.Password,
-			Is_banned:  false,
-			Is_deleted: false,
-			Is_active:  true,
-			Is_verified: false,
+			Name:       req.Name,
+			FamilyName: req.FamilyName,
+			Phone:      req.Phone,
+			Email:      req.Email,
+			Password:   req.Password,
+			IsBanned:  false,
+			IsDeleted: false,
+			IsActive:  true,
+			IsVerified: false,
 		}
 
 		err = authService.RegisterSpecialist(newSpecialist)
 		if err != nil {
-			logger.Error("Failed to register specialist", 
-				zap.Error(err),
-				zap.Any("specialist", newSpecialist)) // Add specialist data logging
-			c.JSON(500, gin.H{"error": err.Error()}) // Return actual error
-			return
+			logger.Error("Registration failed", zap.Error(err))
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not register specialist"})
+            return
 		}
 
 		token, err := authService.GenerateToken(newSpecialist)

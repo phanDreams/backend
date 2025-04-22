@@ -10,6 +10,7 @@ import (
 	"pethelp-backend/internal/database/redis"
 	"pethelp-backend/internal/logger"
 	"pethelp-backend/internal/server"
+	"time"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -32,6 +33,7 @@ func NewApp() *fx.App {
 
 	return fx.New(
 		fx.Supply(logger),
+		// Core services
 		fx.Provide(
 			config.NewPostgresConfig,
 			config.NewRedisConfig,
@@ -41,7 +43,7 @@ func NewApp() *fx.App {
 			server.NewHTTPServer,
 			server.NewGinServer,
 		),
-		// Ensure database is initialized before other components
+		// Ensure storage is initialized before modules
 		fx.Invoke(
 			func(s *postgres.Storage, lc fx.Lifecycle) error {
 				postgres.ManageLifecycle(s, lc)
@@ -55,8 +57,9 @@ func NewApp() *fx.App {
 				return nil
 			},
 		),
-		// Add modules after database initialization
+		// API modules
 		health.Module,
 		specialist.Module,
+		fx.StartTimeout(20*time.Second),
 	)
 }

@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type Specialist struct {
 	ID int64          `json:"id"`
 	Name string       `json:"name"`
@@ -7,9 +9,9 @@ type Specialist struct {
 	Phone string      `json:"phone"`
 	Email string      `json:"email"`
 	Password string   `json:"-"` // store hashed password; omit from JSON responses
-	Is_banned bool    `json:"is_banned"`
-	Is_deleted bool   `json:"is_deleted"`
-	Is_active bool    `json:"is_active"`
-	Is_verified bool  `json:"is_verified"`
-	CreatedAt string  `json:"created_at"`
+	IsBanned bool    `json:"is_banned"`
+	IsDeleted bool   `json:"is_deleted"`
+	IsActive bool    `json:"is_active"`
+	IsVerified bool  `json:"is_verified"`
+	CreatedAt time.Time  `json:"created_at"`
 }

@@ -24,6 +24,11 @@ func NewAuthService(db *pgxpool.Pool, logger *zap.Logger, jwtSecret string) *Aut
 	if db == nil {
 		logger.Fatal("Database connection is nil")
 	}
+	
+	if jwtSecret == "" {
+		logger.Fatal("JWT_SECRET environment variable not set")
+	}
+	
 	return &AuthService{
 		DB:        db,
 		Logger:    logger,
@@ -40,7 +45,7 @@ func (s *AuthService) RegisterSpecialist(specialist *models.Specialist) error {
 	}
 
 	// store the hashed password in the database
-	specialist.Password = string(hashedPassword)
+	passwordHash := string(hashedPassword)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -55,7 +60,7 @@ func (s *AuthService) RegisterSpecialist(specialist *models.Specialist) error {
 		specialist.FamilyName,
 		specialist.Phone,
 		specialist.Email,
-		specialist.Password).Scan(&specialist.ID)
+		passwordHash).Scan(&specialist.ID)
 
 	if err != nil {
 		s.Logger.Error("Failed to insert specialist", zap.Error(err))
