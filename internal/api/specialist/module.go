@@ -29,7 +29,10 @@ var Module = fx.Module("specialist",
 		func(p ModuleParams) (*service.AuthService, error) {
 			var authService *service.AuthService
 			var err error
-
+			secret := os.Getenv("JWT_SECRET")
+			if secret == "" {
+				return nil, fmt.Errorf("JWT_SECRET environment variable not set")
+			}
 			p.Lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					secret := os.Getenv("JWT_SECRET")
@@ -46,7 +49,6 @@ var Module = fx.Module("specialist",
 					return nil
 				},
 			})
-
 			return authService, err
 		},
 	),
