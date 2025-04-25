@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
@@ -8,6 +9,22 @@ import (
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
+
+type TLSConfig struct {
+	Enabled  bool
+    CertFile string
+    KeyFile  string
+}
+
+func NewTLSConfig() *TLSConfig {
+    enabled := os.Getenv("TLS_ENABLED") == "true"
+
+    return &TLSConfig{
+        Enabled:  enabled,
+        CertFile: os.Getenv("TLS_CERT_FILE"), // e.g. /home/ubuntu/certs/server.crt
+        KeyFile:  os.Getenv("TLS_KEY_FILE"),  // e.g. /home/ubuntu/certs/server.key
+    }
+}
 
 type PostgresConfig interface {
 	DSN() string

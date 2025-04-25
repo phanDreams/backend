@@ -38,6 +38,7 @@ func NewApp() *fx.App {
 			config.NewPostgresConfig,
 			config.NewRedisConfig,
 			config.LoadHTTPServerConfig,
+			config.NewTLSConfig,
 			postgres.New,
 			redis.New,
 			server.NewHTTPServer,

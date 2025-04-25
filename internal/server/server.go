@@ -12,12 +12,18 @@ type Server struct {
 	config     *config.HTTPServerConfig
 	logger     *zap.Logger
 	httpServer *http.Server
+	certFile   string
+	keyFile    string
+	tlsConfig  *config.TLSConfig
 }
 
-func NewHTTPServer(config *config.HTTPServerConfig, logger *zap.Logger) *Server {
+func NewHTTPServer(config *config.HTTPServerConfig, logger *zap.Logger, tlsConfig *config.TLSConfig) *Server {
 	return &Server{
 		config: config,
 		logger: logger,
+		certFile: tlsConfig.CertFile,
+        keyFile:  tlsConfig.KeyFile,
+		tlsConfig: tlsConfig,
 	}
 }
 
@@ -29,6 +35,12 @@ func (s *Server) ListenAndServe(router *gin.Engine) error {
 		IdleTimeout:  s.config.IdleTimeout,
 		Handler:      router,
 	}
+
+	if s.certFile != "" && s.keyFile != "" && s.tlsConfig.Enabled {
+        s.logger.Info("Starting HTTPS server...")
+        return s.httpServer.ListenAndServeTLS(s.certFile, s.keyFile)
+    }
+	s.logger.Info("Starting HTTP server...")
 	err := s.httpServer.ListenAndServe()
 	return err
 }
