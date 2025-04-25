@@ -75,6 +75,13 @@ func LoadHTTPServerConfig(logger *zap.Logger) (*HTTPServerConfig, error) {
 		return nil, err
 	}
 
+	env := os.Getenv("ENV")
+    if env == "production" {
+        cfg.HTTPServer.Address = ":443"
+    } else {
+        cfg.HTTPServer.Address = ":3000"
+    }
+
 	logger.Info("Loaded HTTP server config", zap.Any("config", cfg.HTTPServer))
 
 	return &cfg.HTTPServer, nil
