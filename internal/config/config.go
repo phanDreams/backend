@@ -81,12 +81,14 @@ func LoadHTTPServerConfig(logger *zap.Logger) (*HTTPServerConfig, error) {
     // } else {
     //     cfg.HTTPServer.Address = ":3000"
     // }
-	
+
 	// Inject SERVER_ADDRESS from .env if present
 	serverAddress := os.Getenv("SERVER_ADDRESS")
-	if serverAddress != "" {
-		cfg.HTTPServer.Address = serverAddress
-	}
+		if serverAddress != "" {
+			cfg.HTTPServer.Address = serverAddress
+			logger.Info("Overriding server address from ENV", zap.String("address", serverAddress))
+		}
+
 	logger.Info("Loaded HTTP server config", zap.Any("config", cfg.HTTPServer))
 
 	return &cfg.HTTPServer, nil
