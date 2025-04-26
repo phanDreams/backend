@@ -13,6 +13,9 @@ export TLS_CERT_FILE=""
 export TLS_KEY_FILE=""
 export JWT_SECRET=testsecret
 
+# Set BASE_URL for API tests
+export BASE_URL=http://localhost:3000
+
 # Build the Go app
 echo "🛠 Building the app for testing..."
 go build -o pethelp ./cmd/pethelp || { echo "❌ Build failed"; exit 1; }
@@ -35,13 +38,13 @@ SERVER_PID=$!
 # Wait a bit for server to boot
 sleep 3
 
-# Run Go unit tests
+# 🧪 Run Go unit tests
 echo "🧪 Running Go unit tests..."
-go test ./...
+go test ./... || { echo "❌ Unit tests failed"; kill -9 "$SERVER_PID"; exit 1; }
 
-# (Optional) Run API tests with newman (Postman)
-# echo "🧪 Running API tests..."
-# newman run PostmanCollection.json --env-var baseUrl=http://localhost:3000
+# 🧪 Run API shell tests
+echo "🧪 Running API shell tests..."
+bash tests/registration/*.sh || { echo "❌ API tests failed"; kill -9 "$SERVER_PID"; exit 1; }
 
 # Stop the server after tests
 echo "🛑 Stopping test server..."
