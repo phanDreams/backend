@@ -1,7 +1,7 @@
 #!/bin/bash
-
+BASE_URL=${BASE_URL:-http://localhost:3000}
 echo "First registration..."
-curl -s -X POST http://localhost:3000/api/v1/specialists/register \
+response=$(curl -s -w "\n%{http_code}" -X POST $BASE_URL/api/v1/specialists/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "First",
@@ -11,9 +11,9 @@ curl -s -X POST http://localhost:3000/api/v1/specialists/register \
     "password": "SecurePass123!",
     "password_confirmation": "SecurePass123!"
   }'
-
+)
 echo -e "\nTesting duplicate phone..."
-response=$(curl -s -w "\n%{http_code}" -X POST http://localhost:3000/api/v1/specialists/register \
+response=$(curl -s -w "\n%{http_code}" -X POST $BASE_URL/api/v1/specialists/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Second",

@@ -1,6 +1,6 @@
 #!/bin/bash
-
-response=$(curl -s -w "\n%{http_code}" -X POST http://localhost:3000/api/v1/specialists/register \
+BASE_URL=${BASE_URL:-http://localhost:3000}
+response=$(curl -s -w "\n%{http_code}" -X POST $BASE_URL/api/v1/specialists/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Олена",

@@ -1,7 +1,8 @@
 #!/bin/bash
+BASE_URL=${BASE_URL:-http://localhost:3000}
 
 echo "First registration..."
-response=$(curl -s -w "\n%{http_code}" -X POST http://localhost:3000/api/v1/specialists/register \
+response=$(curl -s -w "\n%{http_code}" -X POST $BASE_URL/api/v1/specialists/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "First",
@@ -16,7 +17,7 @@ http_code=$(echo "$response" | tail -n1)
 body=$(echo "$response" | sed '$d')
 
 echo -e "\nTesting duplicate email..."
-response=$(curl -s -w "\n%{http_code}" -X POST http://localhost:3000/api/v1/specialists/register \
+response=$(curl -s -w "\n%{http_code}" -X POST $BASE_URL/api/v1/specialists/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Second",

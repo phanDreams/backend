@@ -1,7 +1,7 @@
 #!/bin/bash
-
+BASE_URL=${BASE_URL:-http://localhost:3000}
 echo "Testing too short password..."
-response=$(curl -s -w "\n%{http_code}" -X POST http://localhost:3000/api/v1/specialists/register \
+response=$(curl -s -w "\n%{http_code}" -X POST $BASE_URL/api/v1/specialists/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test",
@@ -19,7 +19,7 @@ echo "Status Code: $http_code"
 echo "Response: $body"
 
 echo "\nTesting password without special character..."
-response=$(curl -s -w "\n%{http_code}" -X POST http://localhost:3000/api/v1/specialists/register \
+response=$(curl -s -w "\n%{http_code}" -X POST $BASE_URL/api/v1/specialists/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test",
