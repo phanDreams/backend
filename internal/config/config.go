@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -88,6 +89,7 @@ func LoadHTTPServerConfig(logger *zap.Logger) (*HTTPServerConfig, error) {
 			cfg.HTTPServer.Address = serverAddress
 			logger.Info("Overriding server address from ENV", zap.String("address", serverAddress))
 		}
+		fmt.Println("DEBUG SERVER_ADDRESS =", os.Getenv("SERVER_ADDRESS"))
 
 	logger.Info("Loaded HTTP server config", zap.Any("config", cfg.HTTPServer))
 
