@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -83,15 +82,13 @@ func LoadHTTPServerConfig(logger *zap.Logger) (*HTTPServerConfig, error) {
     //     cfg.HTTPServer.Address = ":3000"
     // }
 
-	// Inject SERVER_ADDRESS from .env if present
 	serverAddress := os.Getenv("SERVER_ADDRESS")
-		if serverAddress != "" {
-			cfg.HTTPServer.Address = serverAddress
-			logger.Info("Overriding server address from ENV", zap.String("address", serverAddress))
-		}
-		fmt.Println("DEBUG SERVER_ADDRESS =", os.Getenv("SERVER_ADDRESS"))
-
-	logger.Info("Loaded HTTP server config", zap.Any("config", cfg.HTTPServer))
+    if serverAddress != "" {
+        logger.Info("Overriding server address from ENV", zap.String("address", serverAddress))
+        cfg.HTTPServer.Address = serverAddress
+    } else {
+        logger.Info("No SERVER_ADDRESS in ENV, using YAML config")
+    }
 
 	return &cfg.HTTPServer, nil
 }
