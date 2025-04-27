@@ -45,10 +45,14 @@ func (s *Server) ListenAndServe(router *gin.Engine) error {
 	fmt.Printf("DEBUG: TLS_ENABLED=%v, CERT_FILE=%s, KEY_FILE=%s\n",
 		s.tlsConfig.Enabled, s.tlsConfig.CertFile, s.tlsConfig.KeyFile)
 		
-	if s.certFile != "" && s.keyFile != "" && s.tlsConfig.Enabled {
+		if s.tlsConfig.Enabled {
+			if s.certFile == "" || s.keyFile == "" {
+				return fmt.Errorf("TLS is enabled but cert or key file is missing")
+			}
 			s.logger.Info("Starting HTTPS server...")
-			return s.httpServer.ListenAndServeTLS(s.certFile, s.keyFile) // <= ***RETURN IMMEDIATELY!***
+			return s.httpServer.ListenAndServeTLS(s.certFile, s.keyFile)
 		}
+		
 
 	fmt.Println("DEBUG certFile:", s.certFile)
 	fmt.Println("DEBUG keyFile:", s.keyFile)
