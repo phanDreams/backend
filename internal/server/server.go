@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"pethelp-backend/internal/config"
@@ -45,15 +44,11 @@ func (s *Server) ListenAndServe(router *gin.Engine) error {
 		s.certFile, s.keyFile, s.tlsConfig.Enabled)
 	fmt.Printf("DEBUG: TLS_ENABLED=%v, CERT_FILE=%s, KEY_FILE=%s\n",
 		s.tlsConfig.Enabled, s.tlsConfig.CertFile, s.tlsConfig.KeyFile)
-
+		
 	if s.certFile != "" && s.keyFile != "" && s.tlsConfig.Enabled {
-		s.logger.Info("Starting HTTPS server...")
-		err := s.httpServer.ListenAndServeTLS(s.certFile, s.keyFile)
-		if err != nil {
-			log.Fatalf("HTTPS server failed: %v", err)
+			s.logger.Info("Starting HTTPS server...")
+			return s.httpServer.ListenAndServeTLS(s.certFile, s.keyFile) // <= ***RETURN IMMEDIATELY!***
 		}
-		return err 
-	}
 
 	fmt.Println("DEBUG certFile:", s.certFile)
 	fmt.Println("DEBUG keyFile:", s.keyFile)
