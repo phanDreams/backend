@@ -37,6 +37,8 @@ func (s *Server) ListenAndServe(router *gin.Engine) error {
 		Handler:      router,
 	}
 
+  fmt.Printf("DEBUG: TLS_ENABLED=%v, CERT_FILE=%s, KEY_FILE=%s\n", s.tlsConfig.Enabled, s.tlsConfig.CertFile, s.tlsConfig.KeyFile)
+
 	if s.certFile != "" && s.keyFile != "" && s.tlsConfig.Enabled {
         s.logger.Info("Starting HTTPS server...")
         return s.httpServer.ListenAndServeTLS(s.certFile, s.keyFile)
