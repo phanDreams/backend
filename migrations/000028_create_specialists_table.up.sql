@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS specialists (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    family_name VARCHAR(255),
+    phone VARCHAR(50),
+    email VARCHAR(255),
+    password_hash VARCHAR(255),
+    bio TEXT,
+    avatar TEXT,
+    address_id INTEGER REFERENCES addresses(id),
+    organisation_id INTEGER REFERENCES organisations(id),
+    branch_id INTEGER REFERENCES branches(id),
+    position VARCHAR(255),
+    experience INTEGER,
+    description TEXT,
+    image_id TEXT[],
+    is_banned BOOLEAN DEFAULT false,
+    is_deleted BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    is_verified BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+); 
