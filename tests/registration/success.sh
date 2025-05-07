@@ -5,8 +5,8 @@ response=$(curl -s -w "\n%{http_code}" -X POST $BASE_URL/api/v1/specialists/regi
   -d '{
     "name": "Олена",
     "family_name": "Коваленко",
-    "phone": "+380679876547",
-    "email": "olena@example.com",
+    "phone": "+380679876546",
+    "email": "ol@example.com",
     "password": "StrongPass2024!",
     "password_confirmation": "StrongPass2024!"
   }')
