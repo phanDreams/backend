@@ -25,7 +25,7 @@ func InitDB() error {
 
 	// Set connection pool settings
 	DB.SetMaxOpenConns(25)
-	DB.SetMaxIdleConns(25)
+	DB.SetMaxIdleConns(25) 
 
 	// Verify the connection
 	err = DB.Ping()

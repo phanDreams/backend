@@ -6,6 +6,8 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
@@ -13,21 +15,11 @@ import (
 func NewGinServer(lc fx.Lifecycle, logger *zap.Logger, server *Server) *gin.Engine {
 	router := gin.Default()
 
-	// lc.Append(fx.Hook{
-	// 	OnStart: func(ctx context.Context) error {
-	// 		go func() {
-	// 			logger.Info("Listening on", zap.String("address", server.config.Address))
-	// 			if err := server.ListenAndServe(router); err != nil {
-	// 				logger.Fatal("Failed to start server", zap.Error(err))
-	// 			}
-	// 		}()
-	// 		return nil
-	// 	},
-	// 	OnStop: func(ctx context.Context) error {
-	// 		logger.Info("Stopping server...")
-	// 		return server.httpServer.Shutdown(ctx)
-	// 	},
-	// })
+	// Register custom validators
+	if _, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		// Add any custom validators here if needed
+		logger.Info("Validator engine initialized")
+	}
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -50,7 +42,6 @@ func NewGinServer(lc fx.Lifecycle, logger *zap.Logger, server *Server) *gin.Engi
 			return server.httpServer.Shutdown(ctx)
 		},
 	})
-	
 	
 	return router
 }
