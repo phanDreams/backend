@@ -6,7 +6,7 @@ import (
 )
 
 // Module sets up the /api/v1/specialists/register endpoint
-var Module = AuthModule[*account.Specialist, *authinfra.SpecialistDTO](
+var Module = AuthModule(
     "specialist-auth",               // fx module name
     "specialists",                   // DB table
     "/api/v1/specialists",          // HTTP route prefix

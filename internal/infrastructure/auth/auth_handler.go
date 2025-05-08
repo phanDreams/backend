@@ -19,15 +19,6 @@ type RegistrationDTO interface {
 	GetFamilyName() string
 }
 
-//   type specialistReq struct {
-// 		  Name                string `json:"name" binding:"required,min=2"`
-// 		  FamilyName          string `json:"family_name" binding:"required,min=2"`
-// 		  Phone 				string `json:"phone" binding:"required,regexp=^\\+[0-9]{1,3}[0-9\\- ()]{7,}$"`
-// 		  Email               string `json:"email" binding:"required,email"`
-// 		  Password            string `json:"password" binding:"required,min=12"`
-// 		  PasswordConfirmation string `json:"password_confirmation" binding:"required,eqfield=Password"`
-// }
-
 func RegisterHandler[E dom.Registrable, DTO RegistrationDTO](authSvc   *appauth.AuthService,  
     validator dom.FieldsValidator,  
     repo      dom.Repository[E],    
@@ -35,6 +26,7 @@ func RegisterHandler[E dom.Registrable, DTO RegistrationDTO](authSvc   *appauth.
     toEntity  func(DTO) E,         
     logger    *zap.Logger,) gin.HandlerFunc {
 		return func(c *gin.Context) {
+			
 			// — Bind JSON into the right DTO
 			req := newDTO()
 			if err := c.ShouldBindJSON(req); err != nil {

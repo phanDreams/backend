@@ -5,12 +5,12 @@ import (
 )
 
 type SpecialistDTO struct {
-	Name                string `json:"name" binding:"required,min=2"`
-	FamilyName          string `json:"family_name" binding:"required,min=2"`
-	Phone               string `json:"phone" binding:"required,regexp=^\\+[0-9]{1,3}[0-9\\- ()]{7,}$"`
-	Email               string `json:"email" binding:"required,email"`
-	Password            string `json:"password" binding:"required,min=12"`
-	PasswordConfirmation string `json:"password_confirmation" binding:"required,eqfield=Password"`
+	Name                 string `json:"name" validate:"required,min=2"`
+    FamilyName           string `json:"family_name" validate:"required,min=2"`
+	Phone 				 string `json:"phone" validate:"required,phone"`
+    Email                string `json:"email" validate:"required,email"`
+    Password             string `json:"password" validate:"required,min=12"`
+    PasswordConfirmation string `json:"password_confirmation" validate:"required,eqfield=Password"`
 }
 
 func (d *SpecialistDTO) GetEmail() string {

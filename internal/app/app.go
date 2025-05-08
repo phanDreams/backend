@@ -9,6 +9,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
+	apiauth "pethelp-backend/internal/api/auth"
 	"pethelp-backend/internal/api/health"
 	"pethelp-backend/internal/config"
 	"pethelp-backend/internal/database/postgres"
@@ -49,7 +50,7 @@ func NewApp() fx.Option {
         ),
         // API modules
         health.Module,
-        // apiauth.Module,
+        apiauth.Module,
         // Server start/stop hooks
         fx.Invoke(
             // Manage postgres storage lifecycle

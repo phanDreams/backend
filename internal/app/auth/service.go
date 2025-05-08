@@ -71,15 +71,16 @@ func (s *AuthService) Register(ctx context.Context, model dom.Persistable, pswVa
 	defer cancel()
 
 	row := s.storage.DB().QueryRow(timeoutCtx, query, model.Values()...)
-	err = row.Scan(model.SetID)
-	if err != nil {
-		s.logger.Error("Failed to insert "+model.TableName(), zap.Error(err))
-		return err
-	}
+	var id int64
+	   if err := row.Scan(&id); err != nil {
+	      s.logger.Error("Failed to insert "+model.TableName(), zap.Error(err))
+	      return err
+	  }
+	  model.SetID(id)
 	return nil
 }
 
-// func (s *AuthService) Login(ctx context.Context, email, password string) (string, error) {
-// 	// Implement login logic here
-// 	return "", nil
-// }
+func (s *AuthService) Login(ctx context.Context, email, password string) (string, error) {
+	// Implement login logic here
+	return "", nil
+}
