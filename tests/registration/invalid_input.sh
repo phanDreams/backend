@@ -44,3 +44,4 @@ if [ "$http_code" -eq 400 ]; then
 else
   echo "❌ Test failed"
 fi
+
