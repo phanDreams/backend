@@ -23,12 +23,6 @@ func NewSQLRepository[E dom.Registrable](storage *postgres.Storage, logger *zap.
 	}
 }
 
-// func (r *SQLRepository[E]) FindByEmail(ctx context.Context, email string) (E, error) {
-// 	var entity E
-// 	query := fmt.Sprintf("SELECT * FROM %s WHERE email = $1 AND is_deleted = false", r.table)
-// 	err := r.storage.DB().QueryRow(ctx, query, email).Scan(entity.Values()...)
-// 	return entity, err
-// }
 
 func (r *SQLRepository[E]) CheckEmailExists(ctx context.Context, email string) (bool, error) {
 	var exists bool
@@ -50,8 +44,4 @@ func (r *SQLRepository[E]) CheckPhoneExists(ctx context.Context, phone string) (
 	return exists, nil
 }
 
-// func (r *SQLRepository[E]) Register(ctx context.Context, email, password string) (string, error) {
-// 	// This method is not used in the current implementation
-// 	return "", nil
-// }
 

@@ -3,9 +3,11 @@ package appauth
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
 	"pethelp-backend/internal/database/postgres"
@@ -18,10 +20,22 @@ type AuthService struct {
 	hasher          dom.PasswordHasher
     validator       dom.PasswordValidator
 	defaultTimeout  time.Duration
-	table string
+	table           string
+	jwtSecret       []byte
+	cache          *redis.Client
+	accessTTL       time.Duration
+    refreshTTL      time.Duration
 }
 
-func NewAuthService(storage *postgres.Storage, logger *zap.Logger, hasher dom.PasswordHasher, validator dom.PasswordValidator, jwtSecret string, table string) *AuthService {
+type RedisClient = *redis.Client
+
+func NewAuthService(storage *postgres.Storage,
+    logger *zap.Logger,
+    hasher dom.PasswordHasher,
+    validator dom.PasswordValidator,
+    jwtSecret string,
+    table string,
+    cache RedisClient) *AuthService {
 	if storage == nil {
 		logger.Fatal("Database storage is nil")
 	}
@@ -32,6 +46,10 @@ func NewAuthService(storage *postgres.Storage, logger *zap.Logger, hasher dom.Pa
         validator:      validator,
         defaultTimeout: 5 * time.Second,
         table:          table,
+        jwtSecret:      []byte(jwtSecret),
+        cache:          cache,
+        accessTTL:      15 * time.Minute,
+        refreshTTL:     7 * 24 * time.Hour,
 	}
 }
 
@@ -80,7 +98,46 @@ func (s *AuthService) Register(ctx context.Context, model dom.Persistable, pswVa
 	return nil
 }
 
-func (s *AuthService) Login(ctx context.Context, email, password string) (string, error) {
-	// Implement login logic here
-	return "", nil
+func (s *AuthService) Login(ctx context.Context, email, password string) (accessToken, refreshToken string, err error) {
+	//Retrieve stored hash and user ID
+	timeoutCtx, cancel := context.WithTimeout(ctx, s.defaultTimeout)
+	defer cancel()
+
+	query := fmt.Sprintf(
+        "SELECT id, password_hash FROM %s WHERE email = $1",
+        s.table,
+    )
+    var (
+        id         int64
+        pwHash     string
+    )
+
+	row := s.storage.DB().QueryRow(timeoutCtx, query, email)
+	if err := row.Scan(&id, &pwHash); err != nil {
+        s.logger.Warn("login failed: user not found", zap.String("email", email), zap.Error(err))
+        return "", "", dom.ErrInvalidCredentials
+    }
+
+	//verify password
+	if err := s.hasher.Compare(pwHash, password); err != nil {
+		s.logger.Warn("login failed: bad credentials", zap.String("email", email), zap.Error(err))
+        return "", "", dom.ErrInvalidCredentials
+	}
+
+	subj := strconv.FormatInt(id, 10)
+
+	//generate tokens
+	accessToken, err = s.GenerateJWT(subj, s.accessTTL)
+	if err != nil {
+        s.logger.Error("could not sign access token", zap.Error(err))
+        return "", "", dom.ErrInvalidToken
+    }
+	refreshToken, err = s.GenerateJWT(subj, s.refreshTTL)
+    if err != nil {
+        s.logger.Error("could not sign refresh token", zap.Error(err))
+        return "", "", dom.ErrInvalidToken
+    }
+
+
+	return accessToken, refreshToken, nil
 }

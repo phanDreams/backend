@@ -5,7 +5,10 @@ import (
 	"os"
 	"time"
 
+	redisStorage "pethelp-backend/internal/database/redis"
+
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
@@ -39,6 +42,11 @@ func NewApp() fx.Option {
             // Configs
             config.NewPostgresConfig,
             config.NewRedisConfig,
+            redisStorage.New,
+            func(s *redisStorage.Storage) *redis.Client {
+				return s.Client()
+			},
+
             config.LoadHTTPServerConfig,
             config.NewTLSConfig,
             // Gin engine
@@ -55,6 +63,7 @@ func NewApp() fx.Option {
         fx.Invoke(
             // Manage postgres storage lifecycle
             postgres.ManageLifecycle,
+            redisStorage.ManageLifecycle,
             // Manage HTTP server lifecycle
             func(lc fx.Lifecycle, srv *server.Server, router *gin.Engine) {
                 lc.Append(fx.Hook{
