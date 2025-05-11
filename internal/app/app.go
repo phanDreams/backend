@@ -1,9 +1,9 @@
 package app
 
 import (
-	"context"
 	"os"
 	"pethelp-backend/internal/api/health"
+	"pethelp-backend/internal/api/oauth"
 	"pethelp-backend/internal/api/specialist"
 	"pethelp-backend/internal/config"
 	"pethelp-backend/internal/database/postgres"
@@ -37,30 +37,22 @@ func NewApp() *fx.App {
 		fx.Provide(
 			config.NewPostgresConfig,
 			config.NewRedisConfig,
-			config.LoadHTTPServerConfig,
+			config.NewServersConfig,
 			config.NewTLSConfig,
-			postgres.New,
-			redis.New,
+			config.LoadOAuthConf,
+			// postgres.New,
+			// redis.New,
 			server.NewHTTPServer,
 			server.NewGinServer,
 		),
-		// Ensure storage is initialized before modules
-		fx.Invoke(
-			func(s *postgres.Storage, lc fx.Lifecycle) error {
-				postgres.ManageLifecycle(s, lc)
-				if err := s.Open(context.Background()); err != nil {
-					return err
-				}
-				return nil
-			},
-			func(r *redis.Storage, lc fx.Lifecycle) error {
-				redis.ManageLifecycle(r, lc)
-				return nil
-			},
-		),
+
 		// API modules
 		health.Module,
+		postgres.Module,
+		redis.Module,
 		specialist.Module,
-		fx.StartTimeout(20*time.Second),
+		oauth.Module,
+
+		fx.StartTimeout(10*time.Second),
 	)
 }

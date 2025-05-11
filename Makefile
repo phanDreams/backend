@@ -32,7 +32,7 @@ local-migration-status:
 	${LOCAL_BIN}/goose -dir ${MIGRATION_DIR} postgres "$(PG_DSN)" status
 
 local-migration-up:
-	${LOCAL_BIN}/goose -dir ${MIGRATION_DIR} postgres "$(PG_DSN)" up
+	# ${LOCAL_BIN}/goose -dir ${MIGRATION_DIR} postgres "$(PG_DSN)" up
 
 local-migration-down:
 	${LOCAL_BIN}/goose -dir ${MIGRATION_DIR} postgres "$(PG_DSN)" down

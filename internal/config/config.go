@@ -12,18 +12,18 @@ import (
 
 type TLSConfig struct {
 	Enabled  bool
-    CertFile string
-    KeyFile  string
+	CertFile string
+	KeyFile  string
 }
 
 func NewTLSConfig() *TLSConfig {
-    enabled := os.Getenv("TLS_ENABLED") == "true"
+	enabled := os.Getenv("TLS_ENABLED") == "true"
 
-    return &TLSConfig{
-        Enabled:  enabled,
-        CertFile: os.Getenv("TLS_CERT_FILE"), // e.g. /home/ubuntu/certs/server.crt
-        KeyFile:  os.Getenv("TLS_KEY_FILE"),  // e.g. /home/ubuntu/certs/server.key
-    }
+	return &TLSConfig{
+		Enabled:  enabled,
+		CertFile: os.Getenv("TLS_CERT_FILE"), // e.g. /home/ubuntu/certs/server.crt
+		KeyFile:  os.Getenv("TLS_KEY_FILE"),  // e.g. /home/ubuntu/certs/server.key
+	}
 }
 
 type PostgresConfig interface {
@@ -45,27 +45,36 @@ type HTTPServerConfig struct {
 	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
 }
 
+type PostgresDBConfig struct {
+	MaxPoolSize       int32         `yaml:"max_pool_size"`
+	MinPoolSize       int32         `yaml:"min_pool_size"`
+	ConnectionTimeout time.Duration `yaml:"connection_timeout"`
+	IdleTimeout       time.Duration `yaml:"idle_timeout"`
+	MaxLifetime       time.Duration `yaml:"max_lifetime"`
+}
+
 type Config struct {
 	HTTPServer HTTPServerConfig `yaml:"http_server"`
+	PostgresDB PostgresDBConfig `yaml:"postgres_db"`
 }
 
 // LoadEnv loads the .env file if the path is provided.
 func LoadEnv(path string, logger *zap.Logger) error {
 	if path == "" {
 		logger.Info("No .env file path provided, using system environment variables")
-		return nil
+		// return nil
 	}
 
 	if err := godotenv.Load(path); err != nil {
 		logger.Error("Failed to load .env file", zap.String("path", path), zap.Error(err))
-		return err
+		// return err
 	}
 
 	logger.Info("Loaded .env file", zap.String("path", path))
 	return nil
 }
 
-func LoadHTTPServerConfig(logger *zap.Logger) (*HTTPServerConfig, error) {
+func NewServersConfig(logger *zap.Logger) (*Config, error) {
 	yamlConfigPath := "configs/config.yaml"
 
 	var cfg Config
@@ -75,20 +84,13 @@ func LoadHTTPServerConfig(logger *zap.Logger) (*HTTPServerConfig, error) {
 		return nil, err
 	}
 
-	// env := os.Getenv("ENV")
-    // if env == "production" {
-    //     cfg.HTTPServer.Address = ":443"
-    // } else {
-    //     cfg.HTTPServer.Address = ":3000"
-    // }
-
 	serverAddress := os.Getenv("SERVER_ADDRESS")
-    if serverAddress != "" {
-        logger.Info("Overriding server address from ENV", zap.String("address", serverAddress))
-        cfg.HTTPServer.Address = serverAddress
-    } else {
-        logger.Info("No SERVER_ADDRESS in ENV, using YAML config")
-    }
+	if serverAddress != "" {
+		logger.Info("Overriding server address from ENV", zap.String("address", serverAddress))
+		cfg.HTTPServer.Address = serverAddress
+	} else {
+		logger.Info("No SERVER_ADDRESS in ENV, using YAML config")
+	}
 
-	return &cfg.HTTPServer, nil
+	return &cfg, nil
 }

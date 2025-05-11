@@ -7,12 +7,24 @@ require (
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/joho/godotenv v1.5.1
+	github.com/markbates/goth v1.81.0
 	github.com/redis/go-redis/v9 v9.7.3
 	go.uber.org/fx v1.23.0
 	go.uber.org/zap v1.27.0
 )
 
-require gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
+require (
+	cloud.google.com/go/compute v1.20.1 // indirect
+	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	github.com/go-chi/chi/v5 v5.1.0 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/gorilla/context v1.1.1 // indirect
+	github.com/gorilla/mux v1.6.2 // indirect
+	github.com/gorilla/securecookie v1.1.1 // indirect
+	github.com/gorilla/sessions v1.1.1 // indirect
+	golang.org/x/oauth2 v0.17.0 // indirect
+	google.golang.org/appengine v1.6.8 // indirect
+)
 
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
@@ -26,8 +38,7 @@ require (
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator v9.31.0+incompatible
-	github.com/go-playground/validator/v10 v10.20.0 // indirect
+	github.com/go-playground/validator/v10 v10.20.0
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -47,7 +58,7 @@ require (
 	go.uber.org/dig v1.18.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/arch v0.8.0 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/crypto v0.31.0
 	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect

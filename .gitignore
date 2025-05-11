@@ -20,6 +20,10 @@ go.work.sum
 
 # env file
 .env
+.env.example
 
 bin
 .idea
+.vscode/launch.json
+migrations/*
+

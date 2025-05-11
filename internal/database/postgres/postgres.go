@@ -2,85 +2,79 @@ package postgres
 
 import (
 	"context"
-	"pethelp-backend/internal/config"
+	"fmt"
+	"log"
+	"os"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"pethelp-backend/internal/config"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
-type Storage struct {
-	db     *pgxpool.Pool
-	cfg    config.PostgresConfig
-	logger *zap.Logger
+// DB is the PostgreSQL database connection pool.
+type DB struct {
+	pool *pgxpool.Pool
 }
 
-// New creates a new Storage with the given config and logger.
-func New(pgc config.PostgresConfig, logger *zap.Logger) *Storage {
-	return &Storage{
-		cfg:    pgc,
-		logger: logger,
+// Module provides the PostgreSQL database connection pool to the FX container.
+var Module = fx.Options(
+	fx.Provide(NewPGPool),
+)
+
+// NewStorage creates a new database storage.
+func NewPGPool(lc fx.Lifecycle, dbConf *config.Config, logger *zap.Logger) (*DB, error) {
+	const operationName = "NewPGPool"
+	connString := os.Getenv("PG_DSN") // Or from a config struct
+	if connString == "" {
+		getEnvErr := fmt.Errorf("%s: PG_DSN environment variable not set", operationName)
+		logger.Error("failed env get", zap.Error(getEnvErr))
+		return nil, getEnvErr
 	}
-}
 
-// Open establishes a connection to the PostgreSQL database.
-func (s *Storage) Open(ctx context.Context) error {
-	config, err := pgxpool.ParseConfig(s.cfg.DSN())
+	poolConfig, err := pgxpool.ParseConfig(connString)
 	if err != nil {
-		s.logger.Error("failed to parse database config", zap.Error(err))
-		return err
+		getEnvErr := fmt.Errorf("%s: failed to parse connection string: %w", operationName, err)
+		logger.Error("failed env get", zap.Error(getEnvErr))
+		return nil, getEnvErr
 	}
 
-	// Add connection pool settings
-	config.MaxConns = 25
-	config.MinConns = 5
-	config.MaxConnLifetime = time.Hour
-	config.MaxConnIdleTime = 30 * time.Minute
-	
-	// Disable statement cache to prevent conflicts
-	config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	poolConfig.MaxConns = dbConf.PostgresDB.MaxPoolSize
+	poolConfig.MinConns = dbConf.PostgresDB.MinPoolSize
+	poolConfig.MaxConnLifetime = dbConf.PostgresDB.MaxLifetime
+	poolConfig.MaxConnIdleTime = dbConf.PostgresDB.IdleTimeout
+	poolConfig.ConnConfig.ConnectTimeout = dbConf.PostgresDB.ConnectionTimeout
 
-	pool, err := pgxpool.NewWithConfig(ctx, config)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) //For connect
+	defer cancel()
+
+	dbpool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
-		s.logger.Error("Failed to open pool connections", zap.Error(err))
-		return err
+		return nil, fmt.Errorf("%s: failed to connect to database: %w", operationName, err)
 	}
 
-	if err := pool.Ping(ctx); err != nil {
-		pool.Close()
-		s.logger.Error("Failed to ping postgres database", zap.Error(err))
-		return err
-	}
-
-	s.db = pool
-	s.logger.Info("Database connection created successfully")
-	return nil
-}
-
-// Close closes the database connection.
-func (s *Storage) Close() {
-	if s.db != nil {
-		s.db.Close()
-		s.logger.Info("Database connection closed")
-	}
-}
-
-// DB returns the database pool.
-func (s *Storage) DB() *pgxpool.Pool {
-	return s.db
-}
-
-// ManageLifecycle registers Open and Close with the FX lifecycle.
-func ManageLifecycle(s *Storage, lc fx.Lifecycle) {
+	// Add a lifecycle hook to close the connection pool.
 	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			return s.Open(ctx)
-		},
 		OnStop: func(ctx context.Context) error {
-			s.Close()
+			logger.Info("Closing database connection pool")
+			dbpool.Close()
 			return nil
 		},
 	})
+
+	// Test the connection pool
+	if err := dbpool.Ping(ctx); err != nil {
+		return nil, fmt.Errorf("%s: failed to connect to database: %w", operationName, err)
+	}
+
+	log.Println("Connected to PostgreSQL pool")
+	return &DB{dbpool}, nil
+
+}
+
+// DB returns the database connection pool.
+func (s *DB) Pool() *pgxpool.Pool {
+	return s.pool
 }

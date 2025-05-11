@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"unicode"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator"
+	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
 
 	"pethelp-backend/internal/domain/models"
@@ -20,11 +21,12 @@ import (
 const maxBodySize = 1 << 20 // 1 MiB
 
 type RegistrationRequest struct {
-	Name                 string `json:"name" binding:"required,min=2"`
-	FamilyName          string `json:"family_name" binding:"required,min=2"`
-	Phone string `json:"phone" binding:"required,regexp=^\\+[0-9]{1,3}[0-9\\- ()]{7,}$"`
-	Email               string `json:"email" binding:"required,email"`
-	Password            string `json:"password" binding:"required,min=12"`
+	Name       string `json:"name" binding:"required,min=2"`
+	FamilyName string `json:"family_name" binding:"required,min=2"`
+	// Phone                string `json:"phone" binding:"required,regexp=^\\+[0-9]{1,3}[0-9\\- ()]{7,}$"`
+	Phone                string `json:"phone" binding:"required" validate:"e123"`
+	Email                string `json:"email" binding:"required,email"`
+	Password             string `json:"password" binding:"required,min=12"`
 	PasswordConfirmation string `json:"password_confirmation" binding:"required,eqfield=Password"`
 }
 
@@ -69,8 +71,16 @@ func isValidPassword(password string) error {
 	return nil
 }
 
+// Custom validation function for E.123 phone number
+func isValidE123(fl validator.FieldLevel) bool {
+	e123Regex := regexp.MustCompile(`^\+(?:\[\d{1,3}\]|\d{1,3})(?:[\s.-]?\d+)*$`)
+	return e123Regex.MatchString(fl.Field().String())
+}
+
 func (r *RegistrationRequest) Validate() error {
 	validate := validator.New()
+	validate.RegisterValidation("e123", isValidE123)
+
 	if err := validate.Struct(r); err != nil {
 		if _, ok := err.(*validator.InvalidValidationError); ok {
 			return err
@@ -100,7 +110,7 @@ func RegisterSpecialistHandler(authService *service.AuthService, logger *zap.Log
 	return func(c *gin.Context) {
 		// Read the raw body first
 		// limit reading to maxBodySize
-        lr := &io.LimitedReader{R: c.Request.Body, N: maxBodySize}
+		lr := &io.LimitedReader{R: c.Request.Body, N: maxBodySize}
 		bodyBytes, err := io.ReadAll(lr)
 		if err != nil {
 			logger.Error("Failed to read request body", zap.Error(err))
@@ -108,26 +118,26 @@ func RegisterSpecialistHandler(authService *service.AuthService, logger *zap.Log
 			return
 		}
 		if lr.N <= 0 {
-            logger.Warn("Request body too large")
-            c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "Request body too large"})
-            return
-        }
+			logger.Warn("Request body too large")
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "Request body too large"})
+			return
+		}
 		// Restore the body for subsequent reading
 		c.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 
 		var req RegistrationRequest
-        if err := c.ShouldBindJSON(&req); err != nil {
-            logger.Error("Failed to bind JSON", zap.Error(err))
-            c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
-            return
-        }
-        if err := req.Validate(); err != nil {
-            logger.Error("Validation failed", zap.Error(err))
-            c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-            return
-        }
+		if err := c.ShouldBindJSON(&req); err != nil {
+			logger.Error("Failed to bind JSON", zap.Error(err))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+			return
+		}
+		if err := req.Validate(); err != nil {
+			logger.Error("Validation failed", zap.Error(err))
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 
-		 // Check uniqueness
+		// Check uniqueness
 		exists, err := authService.CheckEmailExists(req.Email)
 		if err != nil {
 			logger.Error("Failed to check email existence", zap.Error(err))
@@ -156,17 +166,17 @@ func RegisterSpecialistHandler(authService *service.AuthService, logger *zap.Log
 			Phone:      req.Phone,
 			Email:      req.Email,
 			Password:   req.Password,
-			IsBanned:  false,
-			IsDeleted: false,
-			IsActive:  true,
+			IsBanned:   false,
+			IsDeleted:  false,
+			IsActive:   true,
 			IsVerified: false,
 		}
 
 		err = authService.RegisterSpecialist(newSpecialist)
 		if err != nil {
 			logger.Error("Registration failed", zap.Error(err))
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not register specialist"})
-            return
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not register specialist"})
+			return
 		}
 
 		token, err := authService.GenerateToken(newSpecialist)
@@ -178,8 +188,8 @@ func RegisterSpecialistHandler(authService *service.AuthService, logger *zap.Log
 
 		c.JSON(201, gin.H{
 			"message": "Specialist registered successfully",
-			"id":     newSpecialist.ID,
-			"token":  token,
+			"id":      newSpecialist.ID,
+			"token":   token,
 		})
 	}
 }

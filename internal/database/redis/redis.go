@@ -2,64 +2,68 @@ package redis
 
 import (
 	"context"
-	"pethelp-backend/internal/config"
+	"fmt"
+	"os"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
-type Storage struct {
+type RedisDB struct {
 	client *redis.Client
-	cfg    config.RedisConfig
-	logger *zap.Logger
 }
+
+// Module provides the PostgreSQL database connection pool to the FX container.
+var Module = fx.Options(
+	fx.Provide(NewClient),
+)
 
 // New creates a new Storage with the given config and logger.
-func New(rc config.RedisConfig, logger *zap.Logger) *Storage {
-	return &Storage{
-		cfg:    rc,
-		logger: logger,
+func NewClient(lc fx.Lifecycle, logger *zap.Logger) (*RedisDB, error) {
+	const operationName = "new_redis_client"
+	connString := os.Getenv("REDIS_URI") // Or from a config struct
+	if connString == "" {
+		getEnvErr := fmt.Errorf("%s: REDIS_URI environment variable not set", operationName)
+		logger.Error("failed env get", zap.Error(getEnvErr))
+		return nil, getEnvErr
 	}
-}
 
-// Open establishes a connection to the Redis database.
-func (s *Storage) Open(ctx context.Context) error {
-	opt, _ := redis.ParseURL(s.cfg.URI())
+	opt, err := redis.ParseURL(connString)
+	if err != nil {
+		parseURLErr := fmt.Errorf("%s: failed parse URL: %w", operationName, err)
+		logger.Error("failed parse URL", zap.Error(parseURLErr))
+		return nil, parseURLErr
+	}
 	client := redis.NewClient(opt)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second) //For connect
+	defer cancel()
+
 	if err := client.Ping(ctx).Err(); err != nil {
-		s.logger.Error("Failed to ping Redis database", zap.Error(err))
-		return err
+		pingErr := fmt.Errorf("%s: failed ping Redis database: %w", operationName, err)
+		logger.Error("failed ping Redis database", zap.Error(pingErr))
+		return nil, pingErr
 	}
 
-	s.client = client
-	s.logger.Info("Redis connection created successfully")
-	return nil
-}
+	logger.Info("Redis connection created successfully")
+	redisDB := &RedisDB{client: client}
 
-// Close closes the Redis connection.
-func (s *Storage) Close() {
-	if s.client != nil {
-		s.client.Close()
-		s.logger.Info("Redis connection closed")
-	}
-}
-
-// Client returns the Redis client.
-func (s *Storage) Client() *redis.Client {
-	return s.client
-}
-
-// ManageLifecycle registers Open and Close with the FX lifecycle.
-func ManageLifecycle(s *Storage, lc fx.Lifecycle) {
 	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			return s.Open(ctx)
-		},
 		OnStop: func(ctx context.Context) error {
-			s.Close()
+			logger.Info("Closing Redis connection")
+			if err := redisDB.client.Close(); err != nil {
+				logger.Error("Error closing Redis connection", zap.Error(err))
+				return err
+			}
 			return nil
 		},
 	})
+
+	return redisDB, nil
+}
+
+func (s *RedisDB) Client() *redis.Client {
+	return s.client
 }

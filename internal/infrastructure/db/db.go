@@ -40,4 +40,4 @@ func InitDB() error {
 // GetDB returns the database instance
 func GetDB() *sql.DB {
 	return DB
-} 
+}
