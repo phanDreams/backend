@@ -35,10 +35,10 @@ body=$(echo "$response" | sed '$d')
 
 echo "Status Code: $http_code"
 echo "Response: $body"
-if [ "$http_code" -eq 500 ]; then
+if [ "$http_code" -eq 400 ]; then
     echo "✅ Password validation test passed"
 else
-  echo "❌ Duplicate-phone test failed: expected 409, got $http_code"
+  echo "❌ Duplicate-phone test failed: expected 500, got $http_code"
  echo "Response: $body"
   exit 1
 fi

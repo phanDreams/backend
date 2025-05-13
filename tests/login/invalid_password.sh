@@ -8,8 +8,8 @@ BASE_URL=${BASE_URL:-http://localhost:3000}
 response=$(curl -s -w "\n%{http_code}" -X POST $BASE_URL/api/v1/specialists/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "ol@example.com",
-    "password": "StrongPass202"
+    "email": "'${TEST_EMAIL:-ol@example.com}'",
+    "password": "'${TEST_INVALID_PASSWORD:-StrongPass202}'"
   }')
 
 http_code=$(echo "$response" | tail -n1)
