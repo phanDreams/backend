@@ -1,13 +1,11 @@
 package app
 
 import (
-	"context"
 	"os"
 	"time"
 
 	redisStorage "pethelp-backend/internal/database/redis"
 
-	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -31,7 +29,7 @@ func NewApp() fx.Option {
         envFile = ""
     }
     if err := config.LoadEnv(envFile, logger); err != nil {
-        logger.Fatal("failed to load .env", zap.Error(err))
+        logger.Fatal("failed to load .env", zap.String("envFile", envFile), zap.Error(err))
     }
 
     return fx.Options(
@@ -46,7 +44,7 @@ func NewApp() fx.Option {
             func(s *redisStorage.Storage) *redis.Client {
 				return s.Client()
 			},
-
+        
             config.LoadHTTPServerConfig,
             config.NewTLSConfig,
             // Gin engine
@@ -64,16 +62,6 @@ func NewApp() fx.Option {
             // Manage postgres storage lifecycle
             postgres.ManageLifecycle,
             redisStorage.ManageLifecycle,
-            // Manage HTTP server lifecycle
-            func(lc fx.Lifecycle, srv *server.Server, router *gin.Engine) {
-                lc.Append(fx.Hook{
-                    OnStart: func(ctx context.Context) error {
-                        go srv.ListenAndServe(router)
-                        return nil
-                    },
-                    OnStop: func(ctx context.Context) error { return srv.Shutdown(ctx) },
-                })
-            },
         ),
         fx.StartTimeout(20*time.Second),
     )

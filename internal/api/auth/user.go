@@ -1,14 +1,13 @@
 package apiauth
 
 import (
-	"os"
-
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
 	appauth "pethelp-backend/internal/app/auth"
+	"pethelp-backend/internal/config"
 	"pethelp-backend/internal/database/postgres"
 	"pethelp-backend/internal/domain/auth"
 	authinfrastructure "pethelp-backend/internal/infrastructure/auth"
@@ -38,31 +37,35 @@ func AuthModule[
 	toEntity   func(D) E,
 ) fx.Option {
 	return fx.Module(moduleName,
-		// Provide AuthService (inc. Redis cache)
 		fx.Provide(
-			func(p ModuleParams,
-				hasher auth.PasswordHasher,
-				validator auth.PasswordValidator,
-				repo auth.Repository[E],
-				cache *redis.Client,
-			) *appauth.AuthService {
-				secret := os.Getenv("JWT_SECRET")
-				return appauth.NewAuthService(
-					p.DB,
-					p.Logger,
-					hasher,
-					validator,
-					secret,
-					tableName,
-					cache,
-				)
-			},
+			config.LoadAuthConfig,
 			authinfrastructure.NewSQLRepository[E],
 			authinfrastructure.NewFieldsValidator,
 			authinfrastructure.NewBcryptHasher,
 			authinfrastructure.NewPasswordValidator,
 		),
 		fx.Supply(tableName),
+		fx.Provide(func(
+				p ModuleParams,
+				cfg config.AuthConfig,
+				hasher auth.PasswordHasher,
+				validator auth.PasswordValidator,
+				repo auth.Repository[E],
+				cache appauth.RedisClient,
+				// tbl string,
+			) *appauth.AuthService {
+				return appauth.NewAuthService(
+					p.DB,
+					cfg,
+					p.Logger,
+					hasher,
+					validator,
+					cache,
+					// tbl,
+				)
+			},
+		),
+	   
 
 		// Mount handlers
 		fx.Invoke(func(p ModuleParams, svc *appauth.AuthService, fv auth.FieldsValidator, repo auth.Repository[E]) {

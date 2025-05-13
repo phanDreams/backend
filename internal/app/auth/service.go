@@ -10,19 +10,20 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
+	"pethelp-backend/internal/config"
 	"pethelp-backend/internal/database/postgres"
 	dom "pethelp-backend/internal/domain/auth"
 )
 
 type AuthService struct {
-	storage *postgres.Storage
-	logger *zap.Logger
+	storage 		*postgres.Storage
+	logger 			*zap.Logger
 	hasher          dom.PasswordHasher
     validator       dom.PasswordValidator
 	defaultTimeout  time.Duration
 	table           string
 	jwtSecret       []byte
-	cache          *redis.Client
+	cache           *redis.Client
 	accessTTL       time.Duration
     refreshTTL      time.Duration
 }
@@ -30,12 +31,12 @@ type AuthService struct {
 type RedisClient = *redis.Client
 
 func NewAuthService(storage *postgres.Storage,
+	cfg config.AuthConfig,
     logger *zap.Logger,
     hasher dom.PasswordHasher,
     validator dom.PasswordValidator,
-    jwtSecret string,
-    table string,
-    cache RedisClient) *AuthService {
+    cache RedisClient,
+	) *AuthService {
 	if storage == nil {
 		logger.Fatal("Database storage is nil")
 	}
@@ -44,12 +45,12 @@ func NewAuthService(storage *postgres.Storage,
         logger:         logger,
         hasher:         hasher,
         validator:      validator,
-        defaultTimeout: 5 * time.Second,
-        table:          table,
-        jwtSecret:      []byte(jwtSecret),
-        cache:          cache,
-        accessTTL:      15 * time.Minute,
-        refreshTTL:     7 * 24 * time.Hour,
+        defaultTimeout: cfg.DefaultTimeout,
+		accessTTL:      cfg.AccessTTL,
+		refreshTTL:     cfg.RefreshTTL,
+		jwtSecret:      cfg.JWTSecret,
+		table:          cfg.Table,
+		cache:          cache,
 	}
 }
 
@@ -85,7 +86,7 @@ func (s *AuthService) Register(ctx context.Context, model dom.Persistable, pswVa
     )
 
 	//run 
-   timeoutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+   timeoutCtx, cancel := context.WithTimeout(ctx, s.defaultTimeout)
 	defer cancel()
 
 	row := s.storage.DB().QueryRow(timeoutCtx, query, model.Values()...)

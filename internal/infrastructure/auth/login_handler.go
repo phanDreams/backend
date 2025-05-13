@@ -22,7 +22,7 @@ func LoginHandler(svc *appauth.AuthService, logger *zap.Logger)  gin.HandlerFunc
 
 		//bind and validate JSON payload
 		if err := c.ShouldBindJSON(&dto); err != nil {
-			logger.Warn("invalid login payload", zap.Error(err))
+			logger.Warn("invalid login payload", zap.String("error", "validation failed"))
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

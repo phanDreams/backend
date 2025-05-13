@@ -15,14 +15,17 @@ type fieldsValidatorImp struct {
 	validate *validator.Validate
 }
 
+// only digits/spaces/parens/dashes after the country code
+var phoneRe = regexp.MustCompile(`^\+[0-9]{1,3}[0-9\-\s()]{7,}$`)
+
 func NewFieldsValidator() dom.FieldsValidator{
 	v := validator.New()
 	   // register a no-arg "phone" validation
-	   _ = v.RegisterValidation("phone", func(fl validator.FieldLevel) bool {
-        // only digits/spaces/parens/dashes after the country code:
-        re := regexp.MustCompile(`^\+[0-9]{1,3}[0-9\-\s()]{7,}$`)
-        return re.MatchString(fl.Field().String())
-    })
+	  if err := v.RegisterValidation("phone", func(fl validator.FieldLevel) bool {
+        return phoneRe.MatchString(fl.Field().String())
+    }); err != nil {
+		panic(fmt.Errorf("failed to register phone validator: %w", err))
+	}
 	return &fieldsValidatorImp{validate: v}
 }
 

@@ -37,7 +37,7 @@ func RegisterHandler[E dom.Registrable, DTO RegistrationDTO](authSvc   *appauth.
             // — Run shared field‐validator on it
 			if err := validator.Validate(req); err != nil {
 				logger.Warn("validation failed", zap.Error(err))
-				c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			} 
 
@@ -68,8 +68,7 @@ func RegisterHandler[E dom.Registrable, DTO RegistrationDTO](authSvc   *appauth.
 			// — Call the same Register for ANY Registrable
 			if err := authSvc.Register(ctx, entity, entity, req.GetPassword()); err != nil {
 				logger.Error("register failed", zap.Error(err))
-				// you can switch on specific errors here…
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 				return
 			}
 			// — Success response

@@ -2,6 +2,7 @@ package appauth
 
 import (
 	"context"
+	"fmt"
 	dom "pethelp-backend/internal/domain/auth"
 	"time"
 
@@ -24,6 +25,11 @@ func (s *AuthService) GenerateJWT(subject string, ttl time.Duration) (string, er
 func (s *AuthService) RefreshToken(ctx context.Context, oldRefreshToken string) (newAccessToken, newRefreshToken string, err error) {
 	//parse token
 	token, e := jwt.ParseWithClaims(oldRefreshToken, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {
+		//Validate the signing algorithm to prevent “alg: none” and similar attacks
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok ||
+			t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
+				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
         return s.jwtSecret, nil
     })
 
@@ -31,7 +37,10 @@ func (s *AuthService) RefreshToken(ctx context.Context, oldRefreshToken string) 
 		return "", "", dom.ErrInvalidCredentials
 	}
 
-	claims, _ := token.Claims.(*jwt.RegisteredClaims)
+	claims, ok := token.Claims.(*jwt.RegisteredClaims)
+	if !ok {
+		return "", "", dom.ErrInvalidCredentials
+	}
 	subj := claims.Subject
 
 	//check redis
@@ -40,7 +49,12 @@ func (s *AuthService) RefreshToken(ctx context.Context, oldRefreshToken string) 
 	}
 
 	//delete old, generate new tokens
-	s.cache.Del(ctx, oldRefreshToken)
+	if err := s.cache.Del(ctx, oldRefreshToken).Err(); err != nil {
+		s.logger.Warn("could not delete old refresh token from cache",
+        zap.String("token", oldRefreshToken),
+        zap.Error(err),
+	  )
+	}
 	newAccessToken, err = s.GenerateJWT(subj, s.accessTTL)
 	if err != nil {
         return "", "", err
@@ -52,7 +66,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, oldRefreshToken string) 
     }
 
 	if e := s.cache.Set(ctx, newRefreshToken, subj, s.refreshTTL).Err(); e != nil {
-		s.logger.Warn("could not store new refresh token", zap.Error(e))
+		return "", "", fmt.Errorf("unable to persist new refresh token: %w", e)
 	}
 
 	return newAccessToken, newRefreshToken, nil
