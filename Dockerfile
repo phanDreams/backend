@@ -1,21 +1,18 @@
-FROM golang:1.24.1-alpine3.21 AS builder
-
-WORKDIR /app
-
-COPY go.mod go.sum ./
-RUN go mod download
-
-COPY . .
-RUN CGO_ENABLED=0 go build -o ./bin/main cmd/main.go
-
 FROM alpine:3.21
 
+# 1) create the user as root
 RUN adduser -D appuser
+
+# 2) copy down your statically-linked binary while you’re still root
+COPY --from=builder /app/bin/main /usr/local/bin/
+
+# 3) now switch to the unprivileged user
 USER appuser
 
+# 4) set a sensible working directory
 WORKDIR /home/appuser
-COPY --from=builder /app/bin/main /usr/local/bin/
 
 EXPOSE 8080
 
+# 5) exec your binary
 CMD ["/usr/local/bin/main"]
