@@ -51,8 +51,6 @@ func AuthModule[
 				hasher auth.PasswordHasher,
 				validator auth.PasswordValidator,
 				repo auth.Repository[E],
-				cache appauth.RedisClient,
-				// tbl string,
 			) *appauth.AuthService {
 				return appauth.NewAuthService(
 					p.DB,
@@ -60,8 +58,7 @@ func AuthModule[
 					p.Logger,
 					hasher,
 					validator,
-					cache,
-					// tbl,
+					p.Cache,
 				)
 			},
 		),

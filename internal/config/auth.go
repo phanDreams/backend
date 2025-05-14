@@ -22,5 +22,8 @@ func LoadAuthConfig(logger *zap.Logger) (AuthConfig, error) {
 	if err := envconfig.Process("", &cfg); err != nil {
 		return cfg, fmt.Errorf("loading auth config: %w", err)
 	}
+	if l := len(cfg.JWTSecret); l < 32 {
+		return cfg, fmt.Errorf("JWT_SECRET too short (%d bytes, need ≥ 32)", l)
+	}
 	return cfg, nil
 }
