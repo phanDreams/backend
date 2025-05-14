@@ -21,7 +21,7 @@ jobs:
       - name: Build and Push Docker Image
         env:
           REGISTRY: docker.io
-          IMAGE_NAME: stevengepi/teammarket-pethelp
+          IMAGE_NAME: pethelpdev/teammarket-pethelp
           TAG_NAME: latest
         run: |
           docker buildx build --no-cache --push --tag $REGISTRY/$IMAGE_NAME:$TAG_NAME -f ./Dockerfile ./
@@ -39,7 +39,7 @@ jobs:
           key: ${{ secrets.AMAZON_SERVER_SSH }}
           script: |
             REGISTRY="docker.io"
-            IMAGE_NAME="stevengepi/teammarket-pethelp"
+            IMAGE_NAME="pethelpdev/teammarket-pethelp"
             TAG_NAME="latest"
             FULL_IMAGE_NAME="$REGISTRY/$IMAGE_NAME:$TAG_NAME"
 
