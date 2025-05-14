@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -45,14 +46,13 @@ func (s *Server) ListenAndServe(router *gin.Engine) error {
 	fmt.Printf("DEBUG: TLS_ENABLED=%v, CERT_FILE=%s, KEY_FILE=%s\n",
 		s.tlsConfig.Enabled, s.tlsConfig.CertFile, s.tlsConfig.KeyFile)
 		
-		if s.tlsConfig.Enabled {
-			if s.certFile == "" || s.keyFile == "" {
-				return fmt.Errorf("TLS is enabled but cert or key file is missing")
-			}
-			s.logger.Info("Starting HTTPS server...")
-			return s.httpServer.ListenAndServeTLS(s.certFile, s.keyFile)
+	if s.tlsConfig.Enabled {
+		if s.certFile == "" || s.keyFile == "" {
+			return fmt.Errorf("TLS is enabled but cert or key file is missing")
 		}
-		
+		s.logger.Info("Starting HTTPS server...")
+		return s.httpServer.ListenAndServeTLS(s.certFile, s.keyFile)
+	}
 
 	fmt.Println("DEBUG certFile:", s.certFile)
 	fmt.Println("DEBUG keyFile:", s.keyFile)
@@ -61,4 +61,11 @@ func (s *Server) ListenAndServe(router *gin.Engine) error {
 	s.logger.Info("Starting HTTP server...")
 	err := s.httpServer.ListenAndServe()
 	return err
+}
+
+func (s *Server) Shutdown(ctx context.Context) error {
+	if s.httpServer != nil {
+		return s.httpServer.Shutdown(ctx)
+	}
+	return nil
 }

@@ -12,7 +12,7 @@ import (
 )
 
 type Storage struct {
-	db     *pgxpool.Pool
+	pool   *pgxpool.Pool
 	cfg    config.PostgresConfig
 	logger *zap.Logger
 }
@@ -27,24 +27,25 @@ func New(pgc config.PostgresConfig, logger *zap.Logger) *Storage {
 
 // Open establishes a connection to the PostgreSQL database.
 func (s *Storage) Open(ctx context.Context) error {
+	// Use session pooler connection string format
 	config, err := pgxpool.ParseConfig(s.cfg.DSN())
 	if err != nil {
-		s.logger.Error("failed to parse database config", zap.Error(err))
+		s.logger.Error("failed to parse database connection string", zap.Error(err))
 		return err
 	}
 
-	// Add connection pool settings
+	// Set connection pool settings
 	config.MaxConns = 25
 	config.MinConns = 5
 	config.MaxConnLifetime = time.Hour
 	config.MaxConnIdleTime = 30 * time.Minute
-	
-	// Disable statement cache to prevent conflicts
+
+	// Disable prepared statements for transaction mode
 	config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
-		s.logger.Error("Failed to open pool connections", zap.Error(err))
+		s.logger.Error("failed to create connection pool", zap.Error(err))
 		return err
 	}
 
@@ -54,22 +55,22 @@ func (s *Storage) Open(ctx context.Context) error {
 		return err
 	}
 
-	s.db = pool
-	s.logger.Info("Database connection created successfully")
+	s.pool = pool
+	s.logger.Info("Database connection pool created successfully")
 	return nil
 }
 
 // Close closes the database connection.
 func (s *Storage) Close() {
-	if s.db != nil {
-		s.db.Close()
-		s.logger.Info("Database connection closed")
+	if s.pool != nil {
+		s.pool.Close()
+		s.logger.Info("Database connection pool closed")
 	}
 }
 
-// DB returns the database pool.
+// DB returns the database connection pool.
 func (s *Storage) DB() *pgxpool.Pool {
-	return s.db
+	return s.pool
 }
 
 // ManageLifecycle registers Open and Close with the FX lifecycle.
