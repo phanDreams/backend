@@ -19,50 +19,49 @@ import (
 )
 
 func NewApp() fx.Option {
-    logger, err := logger.New()
-    if err != nil {
-        panic(err)
-    }
+	logger, err := logger.New()
+	if err != nil {
+		panic(err)
+	}
 
-    envFile := ".env"
-    if env := os.Getenv("APP_ENV"); env != "" && env != "local" {
-        envFile = ""
-    }
-    if err := config.LoadEnv(envFile, logger); err != nil {
-        logger.Fatal("failed to load .env", zap.String("envFile", envFile), zap.Error(err))
-    }
+	envFile := ".env"
+	if env := os.Getenv("APP_ENV"); env != "" && env == "local" {
+		if err := config.LoadEnv(envFile, logger); err != nil {
+			logger.Fatal("failed to load .env", zap.String("envFile", envFile), zap.Error(err))
+		}
+	}
 
-    return fx.Options(
-        // Core providers
-        fx.Provide(
-            // Logger
-            func() *zap.Logger { return logger },
-            // Configs
-            config.NewPostgresConfig,
-            config.NewRedisConfig,
-            redisStorage.New,
-            func(s *redisStorage.Storage) *redis.Client {
+	return fx.Options(
+		// Core providers
+		fx.Provide(
+			// Logger
+			func() *zap.Logger { return logger },
+			// Configs
+			config.NewPostgresConfig,
+			config.NewRedisConfig,
+			redisStorage.New,
+			func(s *redisStorage.Storage) *redis.Client {
 				return s.Client()
 			},
-        
-            config.LoadHTTPServerConfig,
-            config.NewTLSConfig,
-            // Gin engine
-            server.NewGinServer,
-            // Postgres storage
-            postgres.New,
-            // HTTP servers
-            server.NewHTTPServer,
-        ),
-        // API modules
-        health.Module,
-        apiauth.Module,
-        // Server start/stop hooks
-        fx.Invoke(
-            // Manage postgres storage lifecycle
-            postgres.ManageLifecycle,
-            redisStorage.ManageLifecycle,
-        ),
-        fx.StartTimeout(20*time.Second),
-    )
+
+			config.LoadHTTPServerConfig,
+			config.NewTLSConfig,
+			// Gin engine
+			server.NewGinServer,
+			// Postgres storage
+			postgres.New,
+			// HTTP servers
+			server.NewHTTPServer,
+		),
+		// API modules
+		health.Module,
+		apiauth.Module,
+		// Server start/stop hooks
+		fx.Invoke(
+			// Manage postgres storage lifecycle
+			postgres.ManageLifecycle,
+			redisStorage.ManageLifecycle,
+		),
+		fx.StartTimeout(20*time.Second),
+	)
 }
