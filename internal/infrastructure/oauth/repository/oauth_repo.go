@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	redisStorage "pethelp-backend/internal/database/redis"
+
 	"github.com/markbates/goth"
 	"github.com/redis/go-redis/v9"
 )
@@ -17,11 +19,11 @@ const (
 )
 
 type OAuthTokenRepoImpl struct {
-	redisCl *redis.Client
+	redis *redisStorage.Storage
 }
 
-func NewOAuthTokenRepo(cli *redis.Client) *OAuthTokenRepoImpl {
-	return &OAuthTokenRepoImpl{redisCl: cli}
+func NewOAuthTokenRepo(stor *redisStorage.Storage) *OAuthTokenRepoImpl {
+	return &OAuthTokenRepoImpl{redis: stor}
 }
 
 // SetToken method set data to Redis DB
@@ -33,7 +35,7 @@ func (r *OAuthTokenRepoImpl) SetToken(ctx context.Context, user *goth.User) erro
 	}
 
 	key := fmt.Sprintf("%s%s", userKeyPrefix, user.Email)
-	err = r.redisCl.Set(ctx, key, userJSON, userExpiration).Err()
+	err = r.redis.Client().Set(ctx, key, userJSON, userExpiration).Err()
 	if err != nil {
 		return fmt.Errorf("%s failed to save to Redis: %w", operationName, err)
 	}
@@ -43,7 +45,7 @@ func (r *OAuthTokenRepoImpl) SetToken(ctx context.Context, user *goth.User) erro
 // GetToken method get data from Redis DB
 func (r *OAuthTokenRepoImpl) GetToken(ctx context.Context, identifier string) (*goth.User, error) {
 	key := fmt.Sprintf("%s%s", userKeyPrefix, identifier)
-	userJSON, err := r.redisCl.Get(ctx, key).Result()
+	userJSON, err := r.redis.Client().Get(ctx, key).Result()
 	if err == redis.Nil {
 		return nil, fmt.Errorf("%s identifier not found in Redis", operationName)
 	} else if err != nil {
@@ -61,7 +63,7 @@ func (r *OAuthTokenRepoImpl) GetToken(ctx context.Context, identifier string) (*
 // DelToken method delete data from Redis DB
 func (r *OAuthTokenRepoImpl) DelToken(ctx context.Context, identifier string) error {
 	key := fmt.Sprintf("%s%s", userKeyPrefix, identifier)
-	err := r.redisCl.Del(ctx, key).Err()
+	err := r.redis.Client().Del(ctx, key).Err()
 	if err != nil {
 		return fmt.Errorf("%s failed to delete data from Redis: %w", operationName, err)
 	}

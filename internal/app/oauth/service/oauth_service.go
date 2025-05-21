@@ -36,17 +36,8 @@ func NewOAuthService(repo oauthEnt.OAuthTokenRepository, googleOAuthConf *config
 
 // InitAuth method save user token data to Redis DB
 func (s *OAuthServiceImpl) InitAuth(ctx context.Context, user *goth.User) error {
-
-	existingUser, err := s.oauthRepo.GetToken(ctx, user.Email)
-	if err != nil {
-		return fmt.Errorf("%s failed to get token: %w", operationName, err)
-	}
-	if existingUser != nil {
-		fmt.Printf("%s user %s already exists, updating...\n", operationName, user.Email)
-	}
-
 	// Save or overwrite the user data
-	err = s.oauthRepo.SetToken(ctx, user)
+	err := s.oauthRepo.SetToken(ctx, user)
 	if err != nil {
 		return fmt.Errorf("%s failed to save/update token: %w", operationName, err)
 	}

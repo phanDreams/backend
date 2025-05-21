@@ -12,18 +12,18 @@ import (
 
 type TLSConfig struct {
 	Enabled  bool
-    CertFile string
-    KeyFile  string
+	CertFile string
+	KeyFile  string
 }
 
 func NewTLSConfig() *TLSConfig {
-    enabled := os.Getenv("TLS_ENABLED") == "true"
+	enabled := os.Getenv("TLS_ENABLED") == "true"
 
-    return &TLSConfig{
-        Enabled:  enabled,
-        CertFile: os.Getenv("TLS_CERT_FILE"), // e.g. /home/ubuntu/certs/server.crt
-        KeyFile:  os.Getenv("TLS_KEY_FILE"),  // e.g. /home/ubuntu/certs/server.key
-    }
+	return &TLSConfig{
+		Enabled:  enabled,
+		CertFile: os.Getenv("TLS_CERT_FILE"), // e.g. /home/ubuntu/certs/server.crt
+		KeyFile:  os.Getenv("TLS_KEY_FILE"),  // e.g. /home/ubuntu/certs/server.key
+	}
 }
 
 type PostgresConfig interface {
@@ -76,19 +76,19 @@ func LoadHTTPServerConfig(logger *zap.Logger) (*HTTPServerConfig, error) {
 	}
 
 	// env := os.Getenv("ENV")
-    // if env == "production" {
-    //     cfg.HTTPServer.Address = ":443"
-    // } else {
-    //     cfg.HTTPServer.Address = ":3000"
-    // }
+	// if env == "production" {
+	//     cfg.HTTPServer.Address = ":443"
+	// } else {
+	//     cfg.HTTPServer.Address = ":3000"
+	// }
 
 	serverAddress := os.Getenv("SERVER_ADDRESS")
-    if serverAddress != "" {
-        logger.Info("Overriding server address from ENV", zap.String("address", serverAddress))
-        cfg.HTTPServer.Address = serverAddress
-    } else {
-        logger.Info("No SERVER_ADDRESS in ENV, using YAML config")
-    }
+	if serverAddress != "" {
+		logger.Info("Overriding server address from ENV", zap.String("address", serverAddress))
+		cfg.HTTPServer.Address = serverAddress
+	} else {
+		logger.Info("No SERVER_ADDRESS in ENV, using YAML config")
+	}
 
 	return &cfg.HTTPServer, nil
 }

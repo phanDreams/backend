@@ -52,6 +52,7 @@ func (h *OAuthHandlers) ProviderCallback(c *gin.Context) {
 			Message: messErr.Error(),
 		}
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errMessage)
+		return
 	}
 
 	err = h.OAuthService.InitAuth(c.Request.Context(), &user)
@@ -65,6 +66,7 @@ func (h *OAuthHandlers) ProviderCallback(c *gin.Context) {
 			Message: messErr.Error(),
 		}
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errMessage)
+		return
 	}
 
 	tokenData := oauthEnt.TokensData{
