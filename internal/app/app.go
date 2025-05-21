@@ -12,7 +12,9 @@ import (
 
 	apiauth "pethelp-backend/internal/api/auth"
 	"pethelp-backend/internal/api/health"
+	oauthMod "pethelp-backend/internal/api/oauth"
 	"pethelp-backend/internal/config"
+
 	"pethelp-backend/internal/database/postgres"
 	"pethelp-backend/internal/logger"
 	"pethelp-backend/internal/server"
@@ -39,6 +41,8 @@ func NewApp() fx.Option {
 			// Configs
 			config.NewPostgresConfig,
 			config.NewRedisConfig,
+			config.LoadOAuthConf,
+			// Redis storage
 			redisStorage.New,
 			func(s *redisStorage.Storage) *redis.Client {
 				return s.Client()
@@ -56,6 +60,7 @@ func NewApp() fx.Option {
 		// API modules
 		health.Module,
 		apiauth.Module,
+		oauthMod.Module,
 		// Server start/stop hooks
 		fx.Invoke(
 			// Manage postgres storage lifecycle

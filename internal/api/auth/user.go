@@ -31,10 +31,10 @@ func AuthModule[
 	D authinfrastructure.RegistrationDTO,
 ](
 	moduleName string,
-	tableName  string,
-	routePath  string,
-	newDTO     func() D,
-	toEntity   func(D) E,
+	tableName string,
+	routePath string,
+	newDTO func() D,
+	toEntity func(D) E,
 ) fx.Option {
 	return fx.Module(moduleName,
 		fx.Provide(
@@ -46,34 +46,33 @@ func AuthModule[
 		),
 		fx.Supply(tableName),
 		fx.Provide(func(
-				p ModuleParams,
-				cfg config.AuthConfig,
-				hasher auth.PasswordHasher,
-				validator auth.PasswordValidator,
-				repo auth.Repository[E],
-			) *appauth.AuthService {
-				return appauth.NewAuthService(
-					p.DB,
-					cfg,
-					p.Logger,
-					hasher,
-					validator,
-					p.Cache,
-				)
-			},
+			p ModuleParams,
+			cfg config.AuthConfig,
+			hasher auth.PasswordHasher,
+			validator auth.PasswordValidator,
+			repo auth.Repository[E],
+		) *appauth.AuthService {
+			return appauth.NewAuthService(
+				p.DB,
+				cfg,
+				p.Logger,
+				hasher,
+				validator,
+				p.Cache,
+			)
+		},
 		),
-	   
 
 		// Mount handlers
 		fx.Invoke(func(p ModuleParams, svc *appauth.AuthService, fv auth.FieldsValidator, repo auth.Repository[E]) {
 			grp := p.Router.Group(routePath)
-			grp.POST("/register", authinfrastructure.RegisterHandler[E, D](
+			grp.POST("/register", authinfrastructure.RegisterHandler(
 				svc,
-                fv,
-                repo,
-                newDTO,
-                toEntity,
-                p.Logger,
+				fv,
+				repo,
+				newDTO,
+				toEntity,
+				p.Logger,
 			))
 			grp.POST("/login", authinfrastructure.LoginHandler(
 				svc,
